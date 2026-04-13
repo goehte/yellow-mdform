@@ -8,7 +8,7 @@ My primary goal was to find an easy way to write flexible form tools for creatin
 MDForm provides a simple, file-based approach where you define your form structure in plain text files, and the extension handles everything from HTML generation to data submission and storage.
 MDForm is an excellent alternative to Google Forms for Yellow CMS pages — keeping your data on your own server while maintaining simplicity and flexibility.
 
-## Features
+### Features
 
 * Markdown-Based Form Definition: Define forms in simple .mdf text files
 * Multiple Field Types Supported: Text, textarea, email, tel, select, radio, checkbox, toggle, date
@@ -34,6 +34,7 @@ Copy mdform.php to your Yellow CMS system/workers/ folder
 Done! The extension loads automatically on next page load
 
 ## Example installation path
+```
 your-site/
 ├── system/
 │   └── workers/
@@ -44,7 +45,7 @@ your-site/
 └── index.php
 
 * Important: After copying the file, change the default MDFormHashPasskey in the configuration to secure your forms against CSRF attacks. *
-
+```
 
 ## Usage
 ### Creating Your First Form
@@ -57,15 +58,18 @@ Embed the form in any Yellow CMS page using the [mdform ...] element
 
 ### Basic Form Example
 #### File: media/forms/contact.mdf
+```
 *Contact Form:*
 Your Name: [Your Name]*
 Your Email: [Enter your email]{email}*
 Phone Number: [Enter phone]{tel}
 A Message: [Tell us more...]
+```
 
 #### Page Content (page.md file):
+```
 [mdform contact.mdf html]
-
+```
 
 ### Field Types & Syntax
 ```
