@@ -1,14 +1,14 @@
 # MDForm 0.0.1 alpha
 Markdown Form Extension for Datenstrom Yellow
 
-# Introduction
+## Introduction
 MDForm is a lightweight, flexible form extension for Datenstrom Yellow CMS that allows you to create customized web forms using simple "like Markdown" syntax.
-## Main Idea
+### Main Idea
 My primary goal was to find an easy way to write flexible form tools for creating customized web forms while being able to save form data directly. 
 MDForm provides a simple, file-based approach where you define your form structure in plain text files, and the extension handles everything from HTML generation to data submission and storage.
 MDForm is an excellent alternative to Google Forms for Yellow CMS pages — keeping your data on your own server while maintaining simplicity and flexibility.
 
-# Features
+## Features
 
 * Markdown-Based Form Definition: Define forms in simple .mdf text files
 * Multiple Field Types Supported: Text, textarea, email, tel, select, radio, checkbox, toggle, date
@@ -20,20 +20,20 @@ MDForm is an excellent alternative to Google Forms for Yellow CMS pages — keep
 * Zero Database Required: Data stored in CSV files or sent via email
 
 
-# Installation
-## Requirements
+## Installation
+### Requirements
 Datenstrom Yellow CMS
 PHP 7.4 or higher
 Write permissions to system/workers/ folder
 
-## Quick Install (Alpha v0.0.1)
+### Quick Install (Alpha v0.0.1)
 This is the first alpha version (V0.0.1). Installation is straightforward:
 
 Download the mdform.php file
 Copy mdform.php to your Yellow CMS system/workers/ folder
 Done! The extension loads automatically on next page load
 
-# Example installation path
+## Example installation path
 your-site/
 ├── system/
 │   └── workers/
@@ -46,8 +46,8 @@ your-site/
 * Important: After copying the file, change the default MDFormHashPasskey in the configuration to secure your forms against CSRF attacks. *
 
 
-# Usage
-## Creating Your First Form
+## Usage
+### Creating Your First Form
 
 Create a form definition file in media/forms/ folder (e.g., contact.mdf)
 
@@ -55,19 +55,19 @@ Define your form using Markdown like syntax.
 
 Embed the form in any Yellow CMS page using the [mdform ...] element
 
-## Basic Form Example
-### File: media/forms/contact.mdf
+### Basic Form Example
+#### File: media/forms/contact.mdf
 *Contact Form:*
 Your Name: [Your Name]*
 Your Email: [Enter your email]{email}*
 Phone Number: [Enter phone]{tel}
 A Message: [Tell us more...]
 
-### Page Content (page.md file):
+#### Page Content (page.md file):
 [mdform contact.mdf html]
 
 
-## Field Types & Syntax
+### Field Types & Syntax
 ```
 **Text Input:**
 Label: [Placeholder text]
@@ -107,7 +107,7 @@ Birthday: [DD/MM/YYYY]
 This is a **description** with *formatting*.
 ```
 
-# Element Usage - Dispatch Options
+## Element Usage - Dispatch Options
 Control what happens when the form is submitted:
 [mdform contact]                    # Just display form
 [mdform contact html]               # Display form + show submitted values
@@ -115,14 +115,14 @@ Control what happens when the form is submitted:
 [mdform contact email]              # Display form + send email notification
 [mdform contact "html, csv, email"]     # All three methods combined
 
-# Security Warning
-// ⚠️ IMPORTANT: Change this in production!
+## Security Warning
+⚠️ IMPORTANT: Change this in production!
 $this->yellow->system->setDefault("MDFormHashPasskey", "some nonsense string");
 Use a strong, random string for production environments.
 
 
 
-# File Structure
+## File Structure
 ```
 your-site/
 ├── system/
@@ -142,7 +142,7 @@ your-site/
         └── ratelimit/              # Rate limiting files
 ```
 
-# Known Issues (Alpha Version)
+## Known Issues (Alpha Version)
 As this is version 0.0.1-alpha, please be aware of the following:
 
 * Rate limiting uses file-based storage (may need optimization for high traffic)
@@ -152,35 +152,35 @@ As this is version 0.0.1-alpha, please be aware of the following:
 * Limited styling (add custom CSS to match your theme)
 
 
-# Troubleshooting
-## Form Not Appearing
+## Troubleshooting
+### Form Not Appearing
 
 Check file exists in media/forms/[formname].mdf
 Verify file extension is .mdf, .fmd, .md, or .form
 Check file permissions (readable by web server)
 
-## Email Not Sending
+### Email Not Sending
 
 Verify MDFormEmail is set correctly in configuration
 Check server mail configuration (SMTP, sendmail, etc.)
 Review error logs for mail function failures
 
-## CSV Not Being Created
+### CSV Not Being Created
 
 Ensure media/tables/ folder exists
 Check write permissions on the folder
 Verify MDFormDirectoryCSVOutput setting is correct
 
-## Rate Limiting Too Strict
+### Rate Limiting Too Strict
 
 Edit isRateLimited() method to adjust $waitTime
 Or increase timeout value in the code (actual time between submit a form form one IP address is 10s)
 
 
-# License
+## License
 GNU GENERAL PUBLIC LICENSE - Feel free to use, modify, and distribute.
 
-# Credits
+## Credits
 Special thanks to:
 * Giovanni Salmeri for the extension "yellow-table"
 * Anna Svensson for the extension "contact"
@@ -188,7 +188,7 @@ Special thanks to:
 Your extensions have been the main inspiration and learning resource for this extension. Thank you for sharing your knowledge with the Yellow CMS community!
 
 
-# Roadmap
+## Roadmap
 No future enhancements planned.
 Possible ideas for improvements:
  * File upload support for images
@@ -196,7 +196,7 @@ Possible ideas for improvements:
  * Built-in CAPTCHA integration
  * SQLITE Database storage option
 
-# This is Alpha Software (v0.0.1)
+## This is Alpha Software (v0.0.1)
 Use in production at your own risk. Back up your data regularly and test thoroughly before deploying to production environments.
 
 **Made with ❤️ for the Yellow CMS Community**
