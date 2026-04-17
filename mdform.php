@@ -117,12 +117,12 @@ class YellowMdform {
             // English
             "Language: en",
             "MDFormMandatory: *",
-            "MDFormSubmitted: <strong>Form successfully submitted</strong>",
-            "MDFormCSVSaved: Success! Data saved",
-            "MDFormEmailSend: Success! Data send",
+            "MDFormSubmitted: <strong>Form successfully submitted.</strong>",
+            "MDFormCSVSaved: Success! Data saved.",
+            "MDFormEmailSend: Success! Data send.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
-			"MDFormRateLimited: Form missuse protection: Please wait a moment before submitting again.",
+			"MDFormRateLimited: Form missuse protection: Please wait a moment before submitting form again.",
             // German
             "Language: de",
             "MDFormMandatory: *",
@@ -835,7 +835,7 @@ class YellowMdform {
         
         fclose($handle);
         
-        $output = "Success! Data saved.<br>\n"; 
+        $output = $this->yellow->language->getText("MDFormCSVSaved") . "<br>\n"; 
         return $output;
     }
 
