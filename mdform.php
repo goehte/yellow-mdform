@@ -122,6 +122,7 @@ class YellowMdform {
             "MDFormEmailSend: Success! Data send",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
+			"MDFormRateLimited: Form missuse protection: Please wait a moment before submitting again.",
             // German
             "Language: de",
             "MDFormMandatory: *",
@@ -130,6 +131,7 @@ class YellowMdform {
             "MDFormEmailSent: Daten erfolgreich gesendet.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
+			"MDFormRateLimited: Schutz vor Formularmissbrauch: Bitte warten Sie einen Moment, bevor Sie das Formular erneut senden.",
         ));
     }
 
@@ -576,7 +578,7 @@ class YellowMdform {
         // SECURITY: RATE LIMITING CHECK
         // =========================================================================
         if ($this->isRateLimited()) {
-            return "<p><em>[mdform] Error: Please wait a moment before submitting again.</em></p>";
+            return "<p><em>" . $this->yellow->language->getText("MDFormRateLimited") . "</em></p>\n";
         }
         
         // Process dispatch commands if specified
@@ -833,7 +835,7 @@ class YellowMdform {
         
         fclose($handle);
         
-        $output = $this->yellow->language->getText("MDFormCSVSaved") . "<br>\n";
+        $output = "Success! Data saved.<br>\n"; 
         return $output;
     }
 
@@ -954,4 +956,3 @@ class YellowMdform {
     }
     
 }
-
