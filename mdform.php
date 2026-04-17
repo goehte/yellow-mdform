@@ -833,7 +833,7 @@ class YellowMdform {
         
         fclose($handle);
         
-        $output = "Success! Data saved.<br>\n"; 
+        $output = $this->yellow->language->getText("MDFormCSVSaved") . "<br>\n";
         return $output;
     }
 
