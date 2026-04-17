@@ -25,7 +25,7 @@
  * 
  * AUTHOR: Andreas Städler
  * VERSION: 0.0.1
- * DATE: 09.04.2026
+ * DATE: 17.04.2026
  * LICENSE: See extension repository
  * 
  * CONFIGURATION SETTINGS:
@@ -521,18 +521,26 @@ class YellowMdform {
      * @param string $fileContent Raw markdown content
      * @return array Associative array of field names to metadata
      */
+    /**
+     * Extracts ONLY data-holding fields for CSV/Email processing.
+     * Excludes 'markdown' type elements which are for display only.
+     */
     private function getFormMetadata($fileContent) {
         $formData = $this->readMarkdown($fileContent);
         $form_structure = [];
+        
         foreach ($formData as $field) {
-            $form_structure[$field['name']] = [
-                'name' => $field['name'], 
-                'required' => $field['required']
-            ];
+            // SKIP markdown elements (headings, descriptions)
+            if (!($field['type'] === 'markdown')) {
+		    $form_structure[$field['name']] = [
+			'name' => $field['name'], 
+			'required' => $field['required'],
+			'type' => $field['type'] // Keep type if needed later
+		    ];
+            }
         }
         return $form_structure;
     }
-
     /**
      * ========================================================================
      * FORM SUBMISSION PROCESSING
@@ -767,13 +775,22 @@ class YellowMdform {
     private function sub_dispatch_csv($form_structure, $fileName)  {
         $output = ""; 
         $delimiter = ",";
+        $enclosure = '"'; // Double quotes for enclosing fields
+        $escape = "\\";   // Escape character
+        
         $csvPath = $this->yellow->system->get("MDFormDirectoryCSVOutput") . $fileName . ".csv"; 
         $expectedHeaders = array_keys($form_structure);
+
+        // Ensure directory exists
+        $csvDir = dirname($csvPath);
+        if (!is_dir($csvDir)) {
+            mkdir($csvDir, 0755, true);
+        }
 
         // Check existing file for header consistency
         if (file_exists($csvPath)) {
             $handle = fopen($csvPath, 'r');
-            $existingHeader = fgetcsv($handle, 0, $delimiter);
+            $existingHeader = fgetcsv($handle, 0, $delimiter, $enclosure, $escape);
             fclose($handle);
             
             // Backup file if headers don't match (form structure changed)
@@ -782,20 +799,41 @@ class YellowMdform {
             }
         }
 
-        // Append new row to CSV
-        $isNew = !file_exists($csvPath);
-        $handle = fopen($csvPath, 'a');
-        if ($isNew) fputcsv($handle, $expectedHeaders, $delimiter);
-
+        // Prepare data row
         $dataRow = [];
         foreach ($expectedHeaders as $header) {
             $val = $this->yellow->page->getRequest($header);
-            $dataRow[] = is_array($val) ? implode(', ', $val) : $val;
+            
+            // Handle arrays (checkboxes) by joining with semicolon or comma
+            // Using semicolon to avoid confusion if the user entered commas
+            if (is_array($val)) {
+                $val = implode("; ", $val); 
+            }
+            
+            // Ensure value is a string
+            $dataRow[] = is_string($val) ? $val : (string)$val;
         }
-        fputcsv($handle, $dataRow, $delimiter);
+
+        // Open file for appending
+        $isNew = !file_exists($csvPath);
+        $handle = fopen($csvPath, 'a');
+        
+        if ($handle === false) {
+            return "<p><em>[mdform] Error: Cannot open CSV file for writing.</em></p>";
+        }
+
+        // Write headers if new file
+        if ($isNew) {
+            fputcsv($handle, $expectedHeaders, $delimiter, $enclosure, $escape);
+        }
+
+        // Write data row
+        // fputcsv automatically quotes fields containing delimiters, newlines, or quotes
+        fputcsv($handle, $dataRow, $delimiter, $enclosure, $escape);
+        
         fclose($handle);
         
-        $output = $this->yellow->language->getText("MDFormCSVSaved") . "<br>\n";
+        $output = "Success! Data saved.<br>\n"; 
         return $output;
     }
 
