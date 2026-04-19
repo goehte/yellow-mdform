@@ -24,10 +24,14 @@
  * - Input sanitization for email fields
  * 
  * AUTHOR: Andreas Städler
- * VERSION: 0.0.1
- * DATE: 17.04.2026
+ * VERSION: 0.0.2
+ * DATE: 20.04.2026
  * LICENSE: See extension repository
  * 
+ * HISTORY
+ * VERSION: 0.0.1 - Inital Comit
+ * VERSION: 0.0.2 - Number Input added
+ *
  * CONFIGURATION SETTINGS:
  * - MDFormDirectory: Directory containing form definition files
  * - MDFormDirectoryCSVOutput: Directory for CSV output files
@@ -47,12 +51,13 @@
  * MARKDOWN FORM SYNTAX:
  * Label: [Placeholder]          - Text input
  * Label*: [Placeholder]         - Required text input (*)
- * Label: [Dropdown ▼ Option1,Option2] - Dropdown select
+ * Label: [Placeholder ▼; Option1, Option2] - Dropdown select
  * Label: [( ) Option1, ( ) Option2]   - Radio buttons
  * Label: [(x) Option1, ( ) Option2]   - Radio with default selection
  * Label: [[x] Option1, [ ] Option2]   - Checkboxes
  * Label: Field Name: ON/OFF     - Toggle switch
  * Label: [DD/MM/YYYY]           - Date picker
+ * Label: [#;#..#]               - Number with min and max definition 
  * Label: [Multi-line...]        - Textarea
  * 
  * ============================================================================
@@ -117,12 +122,11 @@ class YellowMdform {
             // English
             "Language: en",
             "MDFormMandatory: *",
-            "MDFormSubmitted: <strong>Form successfully submitted.</strong>",
+            "MDFormSubmitted: <strong>Form successfully submitted</strong>",
             "MDFormCSVSaved: Success! Data saved.",
             "MDFormEmailSend: Success! Data send.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
-			"MDFormRateLimited: Form missuse protection: Please wait a moment before submitting form again.",
             // German
             "Language: de",
             "MDFormMandatory: *",
@@ -131,7 +135,6 @@ class YellowMdform {
             "MDFormEmailSent: Daten erfolgreich gesendet.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
-			"MDFormRateLimited: Schutz vor Formularmissbrauch: Bitte warten Sie einen Moment, bevor Sie das Formular erneut senden.",
         ));
     }
 
@@ -258,7 +261,7 @@ class YellowMdform {
      * FIELD SYNTAX PATTERNS:
      * - Text: Label: [Placeholder]
      * - Required: Label*: [Placeholder]
-     * - Select: Label: [Placeholder ▼ Option1,Option2]
+     * - Select: Label: [Placeholder ▼; Option1, Option2]
      * - Radio: Label: [( ) Opt1, ( ) Opt2] or [(x) Opt1, ( ) Opt2]
      * - Checkbox: Label: [[ ] Opt1, [ ] Opt2]
      * - Toggle: Label: FieldName: ON/OFF
@@ -313,7 +316,9 @@ class YellowMdform {
                 'type' => '',
                 'options' => [],
                 'placeholder' => '',
-                'autocomplete' => ''
+                'autocomplete' => '',
+                'min' => '',
+                'max' => ''
             ];
 
             // =========================================================================
@@ -327,7 +332,6 @@ class YellowMdform {
             // =========================================================================
             // STEP 2: DETECT FIELD TYPE OR MARKDOWN TEXT
             // =========================================================================
-            
             // Dropdown
             if (preg_match('/^\[(.*?)\s*▼\s*;\s*(.*)\]$/u', $elementBody, $matches)) {
                 $entry['type'] = 'select';
@@ -359,17 +363,50 @@ class YellowMdform {
                 $entry['name'] = $this->cleanName(trim($matches[1]));
             } 
             // Date
-            elseif ($elementBody === "[DD/MM/YYYY]") {
+            elseif ($elementBody === "/^[DD/MM/YYYY]$/") {
                 $entry['type'] = 'date';
                 $entry['name'] = $this->cleanName("date_".(++$counters['input']));
             } 
-            // Text/Textarea
+            // Logic for Number/Text/Textarea detection
             elseif (preg_match('/^\[(.*)\]$/', $elementBody, $matches)) {
-                $rawPlaceholder = $matches[1];
-                $entry['placeholder'] = trim($rawPlaceholder, '. ');
-                $entry['name'] = $this->cleanName($labelPrefix ?: $entry['placeholder']);
-                $entry['type'] = (strpos($rawPlaceholder, '...') !== false) ? 'textarea' : 'text';
-            } 
+                $rawContent = trim($matches[1]);
+                // Textarea-Check priorisieren (verhindert, dass "..." als Zahl ".." erkannt wird)
+                if (strpos($rawContent, '...') !== false) {
+                    $entry['type'] = 'textarea';
+                    $entry['placeholder'] = trim($rawContent, '. ');
+                    $entry['name'] = $this->cleanName($labelPrefix ?: $entry['placeholder']);
+                } 
+                // Strikte Prüfung auf Zahlen-Syntax
+                // Prüft auf rein numerisch, Semikolon-Trenner oder einen Bereich aus Ziffern (z.B. 1..10)
+                elseif (is_numeric($rawContent) || preg_match('/\d+\.\.\d+/', $rawContent) || strpos($rawContent, ';') !== false) {
+                    $entry['type'] = 'number';
+                    $entry['min'] = null;
+                    $entry['max'] = null;
+
+                    // Syntax-Parsing: [Placeholder;Min..Max]
+                    $parts = explode(';', $rawContent);
+                    
+                    // Erster Teil ist der Placeholder (wenn numerisch)
+                    if (!empty($parts[0]) && is_numeric($parts[0])) {
+                        $entry['placeholder'] = $parts[0];
+                    }
+
+                    // Bereich ermitteln (entweder im ersten oder zweiten Teil)
+                    $rangePart = isset($parts[1]) ? $parts[1] : $parts[0];
+                    if (preg_match('/(\d+)\.\.(\d+)/', $rangePart, $rangeMatches)) {
+                        $entry['min'] = $rangeMatches[1];
+                        $entry['max'] = $rangeMatches[2];
+                    }
+
+                    $entry['name'] = $this->cleanName($labelPrefix ?: "number_" . (++$counters['input']));
+                } 
+                // Standard Textfeld
+                else {
+                    $entry['type'] = 'text';
+                    $entry['placeholder'] = trim($rawContent, '. ');
+                    $entry['name'] = $this->cleanName($labelPrefix ?: $entry['placeholder']);
+                }
+            }
             // MARKDOWN TEXT (Lines without brackets)
             elseif (empty($labelPrefix) && !preg_match('/^\[.*\]$/', $cleanLine)) {
                 // This is a standalone markdown line
@@ -396,6 +433,7 @@ class YellowMdform {
      */
     // 2: Generate HTML output from the structured array
     private function generateHTMLForm($formData, $fileName) {
+        #var_dump($formData);
         $output = "<div class=\"mdform-wrapper\">\n  <form method=\"post\">\n";
         $output .= "    <input type=\"hidden\" name=\"mdform-file\" value=\"".htmlspecialchars($fileName)."\">\n";
 
@@ -454,13 +492,31 @@ class YellowMdform {
                     break;
                     
                 case 'toggle':
-                    $output .= "      <label class=\"switch\">{$field['name']} <input type=\"checkbox\" name=\"{$field['name']}\" value=\"ON\"";
+                    $output .= "      <label class=\"switch\">{$field['name']} <input type=\"checkbox\" name=\"{$field['name']}\" $req value=\"ON\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= "></label>\n";
                     break;
                     
                 case 'date':
                     $output .= "      <input type=\"date\" name=\"{$field['name']}\" $req";
+                    if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
+                    $output .= ">\n";
+                    break;
+                                       
+                case 'number':
+                    $output .= "      <input type=\"number\" name=\"{$field['name']}\"";
+                    
+                    if (!empty($field['placeholder'])) {
+                        $output .= " placeholder=\"" . htmlspecialchars($field['placeholder']) . "\"";
+                    }
+                    if (isset($field['min']) && $field['min'] !== null) {
+                        $output .= " min=\"{$field['min']}\"";
+                    }
+                    if (isset($field['max']) && $field['max'] !== null) {
+                        $output .= " max=\"{$field['max']}\"";
+                    }
+                    
+                    $output .= " $req style=\"width:100%\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= ">\n";
                     break;
@@ -578,7 +634,7 @@ class YellowMdform {
         // SECURITY: RATE LIMITING CHECK
         // =========================================================================
         if ($this->isRateLimited()) {
-            return "<p><em>" . $this->yellow->language->getText("MDFormRateLimited") . "</em></p>\n";
+            return "<p><em>[mdform] Error: Please wait a moment before submitting again.</em></p>";
         }
         
         // Process dispatch commands if specified
@@ -835,7 +891,7 @@ class YellowMdform {
         
         fclose($handle);
         
-        $output = $this->yellow->language->getText("MDFormCSVSaved") . "<br>\n"; 
+        $output = $this->yellow->language->getText("MDFormCSVSaved") . "<br>\n";
         return $output;
     }
 
