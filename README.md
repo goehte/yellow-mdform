@@ -1,4 +1,4 @@
-# MDForm 0.0.1 alpha
+# MDForm 0.0.2 alpha (experimental)
 Markdown Form Extension for Datenstrom Yellow
 
 ## Introduction
@@ -26,8 +26,8 @@ Datenstrom Yellow CMS
 PHP 7.4 or higher
 Write permissions to system/workers/ folder
 
-### Quick Install (Alpha v0.0.1)
-This is the first alpha version (V0.0.1). Installation is straightforward:
+### Quick Install (Alpha v0.0.x)
+This is the first alpha version (V0.0.x). Installation is straightforward:
 
 Download the mdform.php file
 Copy mdform.php to your Yellow CMS system/workers/ folder
@@ -147,7 +147,7 @@ your-site/
 ```
 
 ## Known Issues (Alpha Version)
-As this is version 0.0.1-alpha, please be aware of the following:
+As this is version 0.0.x-alpha, please be aware of the following:
 
 * Rate limiting uses file-based storage (may need optimization for high traffic)
 * CSV file backup on header mismatch creates timestamped backups (ensure disk space)
@@ -200,7 +200,7 @@ Possible ideas for improvements:
  * Built-in CAPTCHA integration
  * SQLITE Database storage option
 
-## This is Alpha Software (v0.0.1)
+## This is Alpha Software (v0.0.x)
 Use in production at your own risk. Back up your data regularly and test thoroughly before deploying to production environments.
 
 **Made with ❤️ for the Yellow CMS Community**
