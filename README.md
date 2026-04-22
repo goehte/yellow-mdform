@@ -5,10 +5,14 @@ Markdown Form Extension for Datenstrom Yellow
 
 ## Introduction
 MDForm is a lightweight, flexible form extension for Datenstrom Yellow CMS that allows you to create customized web forms using simple "like Markdown" syntax.
-### Main Idea
-My primary goal was to find an easy way to write flexible form tools for creating customized web forms while being able to save form data directly. 
-MDForm provides a simple, file-based approach where you define your form structure in plain text files, and the extension handles everything from HTML generation to data submission and storage.
-MDForm is an excellent alternative to Google Forms for Yellow CMS pages — keeping your data on your own server while maintaining simplicity and flexibility.
+
+### Main Idea of this Extension
+My primary goal was to create a tool that could generate customised web forms within the Yellow CMS environment, save form data directly to a CSV file, and send an email containing the provided form data. 
+The MDForm extension provides a simple, file-based approach: you define your form structure in plain text files (.mdf files), and the extension handles everything from HTML generation to data submission and storage.
+MDForm is an excellent alternative to Google Forms for Yellow CMS pages, as it keeps your data on your own server while maintaining simplicity and flexibility.
+
+Related Discussion:
+github.com/datenstrom/community/discussions/1028
 
 ### Features
 
@@ -21,6 +25,7 @@ MDForm is an excellent alternative to Google Forms for Yellow CMS pages — keep
 * Multi-language Ready: English and German language support included
 * Zero Database Required: Data stored in CSV files or sent via email
 
+---
 
 ## Installation
 ### Requirements
@@ -73,9 +78,11 @@ A Message: [Tell us more...]
 [mdform contact.mdf html]
 ```
 
-### Field Types & Syntax
+---
+
+### Markdown Form Syntax & Supported Field Types (.mdf file)
+**Text Input (single line):**
 ```
-**Text Input:**
 Label: [Placeholder text]
 Label*: [Required field]*
 Email Field (with autocomplete)
@@ -83,9 +90,13 @@ Email: [Enter your email]{email}*
 Phone Field (with autocomplete)
 Phone: [123-456-789]{tel}*
 ```
-**Textarea (multiline):**
+**Textarea (multi line):**
 ```
 Message: [Tell us more...]
+```
+**Number (multiline):**
+```
+Number of participants: [1;1..5]
 ```
 **Dropdown Select:**
 ```
@@ -193,13 +204,13 @@ Special thanks to:
 
 Your extensions have been the main inspiration and learning resource for this extension. Thank you for sharing your knowledge with the Yellow CMS community!
 
-
-## Roadmap
-No future enhancements planned.
+## Ideas for improvments:
+*Note: No future enhancements planned.*
 Possible ideas for improvements:
- * File upload support for images
- * Multi-page forms
+ * DEvelop for security related features (CRLF, Rate Limit, ...) in an own Yellow extension
  * Built-in CAPTCHA integration
+ * File upload support for images (using GD)
+ * Multi-page forms
  * SQLITE Database storage option
 
 ## This is Alpha Software (v0.0.x)
