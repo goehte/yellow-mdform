@@ -25,7 +25,7 @@
  * 
  * AUTHOR: Andreas Städler
  * VERSION: 0.0.2
- * DATE: 22.04.2026
+ * DATE: 23.04.2026
  * LICENSE: See extension repository
  * 
  * HISTORY
@@ -112,9 +112,9 @@ class YellowMdform {
         $this->yellow->system->setDefault("MDFormLinkRestriction", "1");
         
         // Allowed file extensions for form definition files
-        $this->yellow->system->setDefault("MDFormAllowedExtensions", ['mdf', 'fmd', 'md', 'form']);
- 
-         // Allowed file extensions for form definition files
+        $this->yellow->system->setDefault("MDFormAllowedExtensions", "mdf, fmd, md, form");  
+
+        // Optional custom stylesheet for form elements
         $this->yellow->system->setDefault("MDFormStyleSheet", "");
         
         // Language translations for UI messages
@@ -236,12 +236,17 @@ class YellowMdform {
      * @param string $fileName Name of the form definition file
      * @return string|false HTML form markup or false if invalid
      */
+    
     private function getForm($filePath, $fileName) {
         // Determine file type based on extension
         $fileType = $this->yellow->toolbox->getFileType($filePath.$fileName);
         
+        // Retrieve configuration (may return string or array depending on revision/override)
+        $allowed = $this->yellow->system->get("MDFormAllowedExtensions");
+        $allowed = array_map('trim', explode(',', $allowed));
+
         // SECURITY: Only process allowed file extensions
-        if (in_array($fileType, $this->yellow->system->get("MDFormAllowedExtensions"))) {
+        if (is_array($allowed) && in_array($fileType, $allowed)) {
             // Read and parse markdown content into structured form data
             $formData = $this->readMarkdown(file_get_contents($filePath.$fileName));
             // Generate HTML from parsed form structure
