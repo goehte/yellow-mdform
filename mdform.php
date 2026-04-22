@@ -121,6 +121,7 @@ class YellowMdform {
         $this->yellow->language->setDefaults(array(
             // English
             "Language: en",
+            "MDFormSubmitBtn: Submit",
             "MDFormMandatory: *",
             "MDFormSubmitted: <strong>Form successfully submitted</strong>",
             "MDFormCSVSaved: Success! Data saved.",
@@ -129,6 +130,7 @@ class YellowMdform {
             "MDFormMailFooter: Mail Footer",
             // German
             "Language: de",
+            "MDFormSubmitBtn: Senden",
             "MDFormMandatory: *",
             "MDFormSubmitted: <strong>Formular erfolgreich abgesendet.</strong>",
             "MDFormCSVSaved: Daten erfolgreich gespeichert.",
@@ -563,7 +565,7 @@ class YellowMdform {
         $output .= "    <input type=\"hidden\" name=\"hash\" value=\"".$this->createHashString($this->yellow->system->get("MDFormHashPasskey"))."\" />\n";  
         $output .= "    <input type=\"hidden\" name=\"referer\" value=\"".$this->yellow->toolbox->getServer("HTTP_REFERER")."\" />\n";
         $output .= "    <input type=\"hidden\" name=\"form-status\" value=\"send\" />\n";        
-        $output .= "    <button type=\"submit\">Submit</button>\n  </form>\n</div>\n";
+        $output .= "    <button type=\"submit\">".$this->yellow->language->getText("MDFormSubmitBtn")."</button>\n  </form>\n</div>\n";
         return $output;
     }
      
