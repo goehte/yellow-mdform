@@ -22,9 +22,9 @@ MDForm is an excellent alternative to Google Forms for Yellow CMS pages — keep
 
 ## Installation
 ### Requirements
-Datenstrom Yellow CMS
-PHP 7.4 or higher
-Write permissions to system/workers/ folder
+* Datenstrom Yellow CMS
+* PHP 7.4 or higher
+* Write permissions to system/workers/ folder
 
 ### Quick Install (Alpha v0.0.x)
 This is the first alpha version (V0.0.x). Installation is straightforward:
