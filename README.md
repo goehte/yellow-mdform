@@ -5,7 +5,7 @@ Markdown Form Extension for Datenstrom Yellow
 <p align="center"><img src="MDForm_Screenshot.png" alt="Screenshot" /></p>
 
 ## How to install an extension:
-[Download ZIP file](https://github.com/goehte/yellow-mdform/archive/refs/tags/v0.0.2-alpha_bugfix1.zip) and copy it into your `system/extensions` folder.  
+[Download ZIP file](https://github.com/goehte/yellow-mdform/archive/refs/tags/v0.0.2-alpha_bugfix2.zip) and copy it into your `system/extensions` folder.  
 
 [Learn more about Yellow CMS extensions](https://github.com/annaesvensson/yellow-update).
 
