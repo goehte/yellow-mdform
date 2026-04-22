@@ -43,7 +43,7 @@ Gender: [( ) Male, ( ) Female, (x) Other]
 Interests: [[x] Sports, [ ] Music, [ ] Reading]
 
 # Toggle Switch:
-Subscribe to newsletter: [Enable notifications: ON/OFF]
+Subscribe to newsletter: [ON/OFF]
 
 # Markdown Text (Non-Input):
 This is a *description* for the form.
