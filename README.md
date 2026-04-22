@@ -1,6 +1,8 @@
 # MDForm 0.0.2 alpha (experimental)
 Markdown Form Extension for Datenstrom Yellow
 
+<p align="center"><img src="MDForm_Screenshot.png" alt="Screenshot" /></p>
+
 ## Introduction
 MDForm is a lightweight, flexible form extension for Datenstrom Yellow CMS that allows you to create customized web forms using simple "like Markdown" syntax.
 ### Main Idea
