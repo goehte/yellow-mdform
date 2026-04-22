@@ -1,7 +1,13 @@
 # MDForm 0.0.2 alpha (experimental)
 Markdown Form Extension for Datenstrom Yellow
 
+## Screenshot:
 <p align="center"><img src="MDForm_Screenshot.png" alt="Screenshot" /></p>
+
+## How to install an extension:
+[Download ZIP file](https://github.com/goehte/yellow-mdform/archive/refs/tags/v0.0.2-alpha.zip) and copy it into your `system/extensions` folder.  
+
+[Learn more about Yellow CMS extensions](https://github.com/annaesvensson/yellow-update).
 
 ## Introduction
 MDForm is a lightweight, flexible form extension for Datenstrom Yellow CMS that allows you to create customized web forms using simple "like Markdown" syntax.
@@ -50,9 +56,10 @@ your-site/
 │   ├── forms/            ← Create this folder for form definitions
 │   └── tables/           ← CSV output will be stored here
 └── index.php
-
-* Important: After copying the file, change the default MDFormHashPasskey in the configuration to secure your forms against CSRF attacks. *
 ```
+
+**Important:** After copying the file, change the default MDFormHashPasskey in the configuration to secure your forms against CSRF attacks.
+
 
 ## Usage
 ### Creating Your First Form
@@ -133,10 +140,9 @@ Control what happens when the form is submitted:
 [mdform contact "html, csv, email"]     # All three methods combined
 
 ## Security Warning
-⚠️ IMPORTANT: Change this in production!
-$this->yellow->system->setDefault("MDFormHashPasskey", "some nonsense string");
-Use a strong, random string for production environments.
-
+⚠️ IMPORTANT: Change this setting in production (public websites):  
+`$this->yellow->system->setDefault("MDFormHashPasskey", "some nonsense string");`  
+*Use a strong, random string for production environments.*
 
 
 ## File Structure
@@ -159,7 +165,7 @@ your-site/
         └── ratelimit/              # Rate limiting files
 ```
 
-## Known Issues (Alpha Version)
+## Known Issues & Limitations (Alpha Version)
 As this is version 0.0.x-alpha, please be aware of the following:
 
 * Rate limiting uses file-based storage (may need optimization for high traffic)
@@ -205,7 +211,7 @@ Special thanks to:
 Your extensions have been the main inspiration and learning resource for this extension. Thank you for sharing your knowledge with the Yellow CMS community!
 
 ## Ideas for improvments:
-*Note: No future enhancements planned.*
+*Note: No future enhancements planned.*  
 Possible ideas for improvements:
  * Develop a CSS for the form elements e.g. to show the Toggle Switch Input as a slider switch we know from smartphones 
  * Develop for security related features (CRLF, Rate Limit, ...) in an own Yellow extension
@@ -217,4 +223,4 @@ Possible ideas for improvements:
 ## This is Alpha Software (v0.0.x)
 Use in production at your own risk. Back up your data regularly and test thoroughly before deploying to production environments.
 
-**Made with ❤️ for the Yellow CMS Community**
+**Made with 💛 for the Yellow CMS Community**
