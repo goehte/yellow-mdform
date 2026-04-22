@@ -25,12 +25,12 @@
  * 
  * AUTHOR: Andreas Städler
  * VERSION: 0.0.2
- * DATE: 20.04.2026
+ * DATE: 22.04.2026
  * LICENSE: See extension repository
  * 
  * HISTORY
  * VERSION: 0.0.1 - Inital Comit
- * VERSION: 0.0.2 - Number Input added
+ * VERSION: 0.0.2 - Number Input added and Date min max added
  *
  * CONFIGURATION SETTINGS:
  * - MDFormDirectory: Directory containing form definition files
@@ -68,7 +68,7 @@ class YellowMdform {
      * Extension version number
      * @var string
      */
-    const VERSION = "0.0.1";
+    const VERSION = "0.0.2";
     
     /**
      * Reference to Yellow CMS API instance
@@ -363,44 +363,54 @@ class YellowMdform {
                 $entry['name'] = $this->cleanName(trim($matches[1]));
             } 
             // Date
-            elseif ($elementBody === "/^[DD/MM/YYYY]$/") {
+            // Date input: [DD/MM/YYYY] or [DD/MM/YYYY;Min..Max]
+            elseif (preg_match('/^\[DD\/MM\/YYYY(?:;(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2}))?\]$/', $elementBody, $dateMatches)) {
                 $entry['type'] = 'date';
-                $entry['name'] = $this->cleanName("date_".(++$counters['input']));
-            } 
+                $entry['min'] = !empty($dateMatches[1]) ? $dateMatches[1] : null;
+                $entry['max'] = !empty($dateMatches[2]) ? $dateMatches[2] : null;
+                $entry['name'] = $this->cleanName($labelPrefix ?: "date_" . (++$counters['input']));
+            }
             // Logic for Number/Text/Textarea detection
-            elseif (preg_match('/^\[(.*)\]$/', $elementBody, $matches)) {
+            elseif (preg_match('/^\[(.+)\]$/', $elementBody, $matches)) {
                 $rawContent = trim($matches[1]);
-                // Textarea-Check priorisieren (verhindert, dass "..." als Zahl ".." erkannt wird)
+
+                // Textarea check (prioritize to avoid misclassifying "..." as a range)
                 if (strpos($rawContent, '...') !== false) {
                     $entry['type'] = 'textarea';
                     $entry['placeholder'] = trim($rawContent, '. ');
                     $entry['name'] = $this->cleanName($labelPrefix ?: $entry['placeholder']);
-                } 
-                // Strikte Prüfung auf Zahlen-Syntax
-                // Prüft auf rein numerisch, Semikolon-Trenner oder einen Bereich aus Ziffern (z.B. 1..10)
-                elseif (is_numeric($rawContent) || preg_match('/\d+\.\.\d+/', $rawContent) || strpos($rawContent, ';') !== false) {
+                }
+                // Number input: Check for digits, ranges, or floats
+                // Number input: [5], [5;1..10], [;1..10], [1..10], [5.0], [3.14;0..10]
+                // Number input: [Placeholder], [Placeholder;Min..Max], [;Min..Max]
+                elseif (preg_match('/^\[(?:(\d+(?:\.\d+)?))?(?:;(\d+(?:\.\d+)?)\.\.(\d+(?:\.\d+)?))?\]$/', $elementBody, $numberMatches)) {
                     $entry['type'] = 'number';
-                    $entry['min'] = null;
-                    $entry['max'] = null;
-
-                    // Syntax-Parsing: [Placeholder;Min..Max]
-                    $parts = explode(';', $rawContent);
+                    $entry['placeholder'] = !empty($numberMatches[1]) ? $numberMatches[1] : null;
+                    $entry['min'] = ($numberMatches[2] !== null) ? $numberMatches[2] : null;
+                    $entry['max'] = ($numberMatches[3]  !== null) ? $numberMatches[3] : null;
                     
-                    // Erster Teil ist der Placeholder (wenn numerisch)
-                    if (!empty($parts[0]) && is_numeric($parts[0])) {
-                        $entry['placeholder'] = $parts[0];
+                    // Calculate step based on decimal precision
+                    $step = "1";
+                    if (preg_match('/\.\d+/', $elementBody)) {
+                        $decimals = [];
+                        if ($entry['placeholder'] !== null && strpos($entry['placeholder'], '.') !== false) {
+                            $decimals[] = strlen(explode('.', $entry['placeholder'])[1]);
+                        }
+                        if ($entry['min'] !== null && strpos($entry['min'], '.') !== false) {
+                            $decimals[] = strlen(explode('.', $entry['min'])[1]);
+                        }
+                        if ($entry['max'] !== null && strpos($entry['max'], '.') !== false) {
+                            $decimals[] = strlen(explode('.', $entry['max'])[1]);
+                        }
+                        if (!empty($decimals)) {
+                            $maxDecimals = max($decimals);
+                            $step = "0." . str_repeat("0", $maxDecimals - 1) . "1";
+                        }
                     }
-
-                    // Bereich ermitteln (entweder im ersten oder zweiten Teil)
-                    $rangePart = isset($parts[1]) ? $parts[1] : $parts[0];
-                    if (preg_match('/(\d+)\.\.(\d+)/', $rangePart, $rangeMatches)) {
-                        $entry['min'] = $rangeMatches[1];
-                        $entry['max'] = $rangeMatches[2];
-                    }
-
+                    $entry['step'] = $step;
                     $entry['name'] = $this->cleanName($labelPrefix ?: "number_" . (++$counters['input']));
-                } 
-                // Standard Textfeld
+                }
+                                // Standard text field
                 else {
                     $entry['type'] = 'text';
                     $entry['placeholder'] = trim($rawContent, '. ');
@@ -498,24 +508,32 @@ class YellowMdform {
                     break;
                     
                 case 'date':
-                    $output .= "      <input type=\"date\" name=\"{$field['name']}\" $req";
+                    $output .= "      <input type=\"date\" name=\"{$field['name']}\"";
+                    if (isset($field['min']) && $field['min'] !== null) {
+                        $output .= " min=\"" . htmlspecialchars($field['min']) . "\"";
+                    }
+                    if (isset($field['max']) && $field['max'] !== null) {
+                        $output .= " max=\"" . htmlspecialchars($field['max']) . "\"";
+                    }
+                    $output .= " $req style=\"width:100%\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= ">\n";
                     break;
                                        
                 case 'number':
                     $output .= "      <input type=\"number\" name=\"{$field['name']}\"";
-                    
                     if (!empty($field['placeholder'])) {
                         $output .= " placeholder=\"" . htmlspecialchars($field['placeholder']) . "\"";
                     }
                     if (isset($field['min']) && $field['min'] !== null) {
-                        $output .= " min=\"{$field['min']}\"";
+                        $output .= " min=\"" . htmlspecialchars($field['min']) . "\"";
                     }
                     if (isset($field['max']) && $field['max'] !== null) {
-                        $output .= " max=\"{$field['max']}\"";
+                        $output .= " max=\"" . htmlspecialchars($field['max']) . "\"";
                     }
-                    
+                    if (isset($field['step']) && $field['step'] !== null) {
+                        $output .= " step=\"" . htmlspecialchars($field['step']) . "\"";
+                    }
                     $output .= " $req style=\"width:100%\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= ">\n";
