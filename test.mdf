@@ -6,7 +6,7 @@ Email: [your@email.com]{email}
 Phone: [123-456-7890]{tel}
 
 # Required Text Inputs:
-Full Name*: [First and Last Name]
+Full Name: [First and Last Name]*
 
 # Number Inputs:
 Number of participants: [5]
