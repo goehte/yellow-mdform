@@ -119,7 +119,7 @@ Interests: [[ ] Sports, [ ] Music, [ ] Travel, [ ] Reading]
 ```
 **Toggle Switch:**
 ```
-Newsletter: Subscribe: ON/OFF
+Newsletter: [ON/OFF]
 ```
 **Date Picker:**
 ```
