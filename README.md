@@ -207,7 +207,8 @@ Your extensions have been the main inspiration and learning resource for this ex
 ## Ideas for improvments:
 *Note: No future enhancements planned.*
 Possible ideas for improvements:
- * DEvelop for security related features (CRLF, Rate Limit, ...) in an own Yellow extension
+ * Develop a CSS for the form elements e.g. to show the Toggle Switch Input as a slider switch we know from smartphones 
+ * Develop for security related features (CRLF, Rate Limit, ...) in an own Yellow extension
  * Built-in CAPTCHA integration
  * File upload support for images (using GD)
  * Multi-page forms
