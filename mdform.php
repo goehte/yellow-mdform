@@ -55,7 +55,7 @@
  * Label: [( ) Option1, ( ) Option2]   - Radio buttons
  * Label: [(x) Option1, ( ) Option2]   - Radio with default selection
  * Label: [[x] Option1, [ ] Option2]   - Checkboxes
- * Label: Field Name: ON/OFF     - Toggle switch
+ * Label: [ON/OFF]               - Toggle switch
  * Label: [DD/MM/YYYY]           - Date picker
  * Label: [#;#..#]               - Number with min and max definition 
  * Label: [Multi-line...]        - Textarea
@@ -269,7 +269,7 @@ class YellowMdform {
      * - Select: Label: [Placeholder ▼; Option1, Option2]
      * - Radio: Label: [( ) Opt1, ( ) Opt2] or [(x) Opt1, ( ) Opt2]
      * - Checkbox: Label: [[ ] Opt1, [ ] Opt2]
-     * - Toggle: Label: FieldName: ON/OFF
+     * - Toggle: Label: [ON/OFF]
      * - Date: Label: [DD/MM/YYYY]
      * - Textarea: Label: [Multi-line...]
      * 
@@ -281,7 +281,7 @@ class YellowMdform {
     private function readMarkdown($fileContent) {
         $lines = explode("\n", $fileContent);
         $formData = [];
-        $counters = ['radio' => 0, 'check' => 0, 'input' => 0];
+        $counters = ['radio' => 0, 'check' => 0, 'toggle' => 0, 'input' => 0];
 
         foreach ($lines as $line) {
             $line = trim($line);
@@ -363,9 +363,10 @@ class YellowMdform {
                 }
             } 
             // Toggle
-            elseif (preg_match('/^\[(.*?):\s*ON\/OFF\]$/i', $elementBody, $matches)) {
+            elseif (preg_match('/^\[(?:(.*?):\s*)?ON\/OFF\]$/i', $elementBody, $matches)) {
                 $entry['type'] = 'toggle';
-                $entry['name'] = $this->cleanName(trim($matches[1]));
+                #$entry['name'] = $this->cleanName(trim($matches[1]));
+                $entry['name'] = $this->cleanName($labelPrefix ?: "toggle_" . (++$counters['toggle']));
             } 
             // Date
             // Date input: [DD/MM/YYYY] or [DD/MM/YYYY;Min..Max]
@@ -507,7 +508,7 @@ class YellowMdform {
                     break;
                     
                 case 'toggle':
-                    $output .= "      <label class=\"switch\">{$field['name']} <input type=\"checkbox\" name=\"{$field['name']}\" $req value=\"ON\"";
+                    $output .= "      <label class=\"switch\"><input type=\"checkbox\" name=\"{$field['name']}\" $req value=\"ON\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= "></label>\n";
                     break;
