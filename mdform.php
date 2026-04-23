@@ -24,13 +24,14 @@
  * - Input sanitization for email fields
  * 
  * AUTHOR: Andreas Städler
- * VERSION: 0.0.2
+ * VERSION: 0.0.3
  * DATE: 23.04.2026
  * LICENSE: See extension repository
  * 
  * HISTORY
  * VERSION: 0.0.1 - Inital Comit
  * VERSION: 0.0.2 - Number Input added and Date min max added
+ * VERSION: 0.0.3 - Input Elements optimized URL & Password added, Textareasize is variable
  *
  * CONFIGURATION SETTINGS:
  * - MDFormDirectory: Directory containing form definition files
