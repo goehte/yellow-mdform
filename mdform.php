@@ -372,7 +372,10 @@ class YellowMdform {
             } 
             // Date
             // Date input: [DD/MM/YYYY] or [DD/MM/YYYY;Min..Max]
-            elseif (preg_match('/^\[DD\/MM\/YYYY(?:;(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2}))?\]$/', $elementBody, $dateMatches)) {
+            elseif (preg_match('/^\[DD\/MM\/YYYY(?:;(\d{4}-\d{2}-\d{2}|TODAY)\.\.(\d{4}-\d{2}-\d{2}|TODAY))?\]$/', $elementBody, $dateMatches)) {
+                // Handle the "TODAY" replacement example: [DD/MM/YYYY;TODAY..1979-12-31]
+                if ($dateMatches[1] === 'TODAY') $dateMatches[1] = date('Y-m-d');
+                if ($dateMatches[2] === 'TODAY') $dateMatches[2] = date('Y-m-d');
                 $entry['type'] = 'date';
                 $entry['min'] = !empty($dateMatches[1]) ? $dateMatches[1] : null;
                 $entry['max'] = !empty($dateMatches[2]) ? $dateMatches[2] : null;
