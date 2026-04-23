@@ -1,12 +1,14 @@
 ### MDF Test File - All Input Types
 
 # Markdown Text (Non-Input):
-This is a *description* for the form.
+This is a *description* for the **form**.
 
 # Text Inputs:
 Name: [Enter your name]
 Email: [your@email.com]{email}
 Phone: [123-456-7890]{tel}
+Website: [https://example.com]{url}
+Password: [Enter your password]{password}
 
 # Required Text Inputs:
 Full Name*: [First and Last Name]{name}
