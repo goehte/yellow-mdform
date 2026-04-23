@@ -365,10 +365,10 @@ class YellowMdform {
                 }
             } 
             // Toggle
+            // Toggle input: Subscribe to newsletter: [ON/OFF] or Subscribe to newsletter: [Apply: ON/OFF]
             elseif (preg_match('/^\[(?:(.*?):\s*)?ON\/OFF\]$/i', $elementBody, $matches)) {
                 $entry['type'] = 'toggle';
-                #$entry['name'] = $this->cleanName(trim($matches[1]));
-                $entry['name'] = $this->cleanName($labelPrefix ?: "toggle_" . (++$counters['toggle']));
+                $entry['name'] = $this->cleanName(trim($matches[1]) ?: $labelPrefix ?: "toggle_" . (++$counters['toggle']));
             } 
             // Date
             // Date input: [DD/MM/YYYY] or [DD/MM/YYYY;Min..Max]
@@ -473,7 +473,7 @@ class YellowMdform {
             $star = $field['required'] ? $this->yellow->language->getText("MDFormMandatory") : "";
 
             $output .= "    <div class=\"mdform-group\">\n";
-            if ($field['label']) $output .= "      <strong>{$field['label']} $star</strong><br>\n";
+            if ($field['label']) $output .= "      <strong>{$field['label']}: $star</strong><br>\n";
 
             // Determine final HTML type
             $htmlType = $field['type'];
@@ -513,6 +513,9 @@ class YellowMdform {
                     $output .= "      <label class=\"switch\"><input type=\"checkbox\" name=\"{$field['name']}\" $req value=\"ON\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= "></label>\n";
+                    # Type text next to the switch:
+                    $toggle_text = preg_replace('/_/', ' ', $field['name']);
+                    if (empty($field['label'])) $output .= "$toggle_text $star<br>\n";
                     break;
                     
                 case 'date':
