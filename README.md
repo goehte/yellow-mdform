@@ -205,8 +205,8 @@ GNU GENERAL PUBLIC LICENSE - Feel free to use, modify, and distribute.
 
 ## Credits
 Special thanks to:
-* Giovanni Salmeri for the extension "yellow-table"
-* Anna Svensson for the extension "contact"
+* Giovanni Salmeri for the extension: [Yellow Table](https://github.com/GiovanniSalmeri/yellow-table)
+* Anna Svensson for the extension: [Yellow Contact](https://github.com/annaesvensson/yellow-contact/)
 
 Your extensions have been the main inspiration and learning resource for this extension. Thank you for sharing your knowledge with the Yellow CMS community!
 
@@ -216,9 +216,10 @@ Possible ideas for improvements:
  * Develop a CSS for the form elements e.g. to show the Toggle Switch Input as a slider switch we know from smartphones 
  * Develop for security related features (CRLF, Rate Limit, ...) in an own Yellow extension
  * Built-in CAPTCHA integration
- * File upload support for images (using GD)
  * Multi-page forms
- * SQLITE Database storage option
+ * E-Mail confirmation of form data
+ * Encypted file storage option (storage format TBD)
+ * File upload support for images: I suggest to use the extension [Yellow Dropzone](https://github.com/GiovanniSalmeri/yellow-dropzone)
 
 ## This is Alpha Software (v0.0.x)
 Use in production at your own risk. Back up your data regularly and test thoroughly before deploying to production environments.
