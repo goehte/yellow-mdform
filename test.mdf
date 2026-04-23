@@ -1,12 +1,16 @@
 ### MDF Test File - All Input Types
 
+# Markdown Text (Non-Input):
+This is a *description* for the form.
+
 # Text Inputs:
 Name: [Enter your name]
 Email: [your@email.com]{email}
 Phone: [123-456-7890]{tel}
 
 # Required Text Inputs:
-Full Name: [First and Last Name]*
+Full Name*: [First and Last Name]{name}
+required field with autocomplete
 
 # Number Inputs:
 Number of participants: [5]
@@ -28,7 +32,8 @@ Text with range-like: [1 to 10]
 
 # Date Inputs:
 Event Date: [DD/MM/YYYY]
-Birth Date: [DD/MM/YYYY;1979-01-01..1979-12-31]
+Event Date with limitations: [DD/MM/YYYY;1979-01-01..1979-12-31]
+Event Date with TODAY limitation: [DD/MM/YYYY;TODAY..2100-12-31]
 
 # Textarea:
 Description: [Multi-line text...]
@@ -44,12 +49,11 @@ Interests: [[x] Sports, [ ] Music, [ ] Reading]
 
 # Toggle Switch:
 Subscribe to newsletter: [ON/OFF]
+Subscribe to newsletter: [Apply: ON/OFF]
+[Subscribe Newsletter: ON/OFF]*
+[ON/OFF]
 
-# Markdown Text (Non-Input):
-This is a *description* for the form.
-
----
+-- -
 **Note:** All fields marked with * are required.
-
 
 
