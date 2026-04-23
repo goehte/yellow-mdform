@@ -18,13 +18,12 @@
  * 
  * SECURITY FEATURES:
  * - Path traversal protection (basename() validation)
- * - CSRF token validation with IP binding
+ * - CSRF token validation
  * - Rate limiting per IP address
  * - Email header injection prevention
  * - Input sanitization for email fields
  * 
  * AUTHOR: Andreas Städler
- * VERSION: 0.0.3
  * DATE: 23.04.2026
  * LICENSE: See extension repository
  * 
@@ -32,11 +31,11 @@
  * VERSION: 0.0.1 - Inital Comit
  * VERSION: 0.0.2 - Number Input added and Date min max added
  * VERSION: 0.0.3 - Input Elements optimized URL & Password added, Textareasize is variable
- *
+ * VERSION: 0.0.4 - Security updates on Rate Limit (Pure IP added)
+ 
  * CONFIGURATION SETTINGS:
  * - MDFormDirectory: Directory containing form definition files
  * - MDFormDirectoryCSVOutput: Directory for CSV output files
- * - MDFormHashPasskey: Secret key for CSRF hash generation (CHANGE THIS!)
  * - MDFormRateLimitDirectory: Directory for rate limit tracking files
  * - MDFormEmail: Sender email address for form notifications
  * - MDFormEmailRestriction: Whether to restrict email from page metadata
@@ -69,7 +68,7 @@ class YellowMdform {
      * Extension version number
      * @var string
      */
-    const VERSION = "0.0.2";
+    const VERSION = "0.0.4";
     
     /**
      * Reference to Yellow CMS API instance
@@ -95,13 +94,14 @@ class YellowMdform {
         
         // Directory for storing CSV output files from form submissions
         $this->yellow->system->setDefault("MDFormDirectoryCSVOutput", "media/tables/");
+                
+        // Directory for rate limiting files (stores submission timestamps per IP)
+        $this->yellow->system->setDefault("MDFormRateLimitDirectory", "cache/mdform/ratelimit/");
         
         // SECRET: Passkey for CSRF hash generation - MUST be changed in production!
         // This secret is combined with IP and timestamp to create unique tokens
-        $this->yellow->system->setDefault("MDFormHashPasskey", "some nonsense string");
-        
-        // Directory for rate limiting files (stores submission timestamps per IP)
-        $this->yellow->system->setDefault("MDFormRateLimitDirectory", "cache/mdform/ratelimit/");
+        $saltPasskey = $this->yellow->system->get("coreSitename"); // As intial placeholder we use sitename as a unique salt
+        $this->yellow->system->setDefault("MDFormHashSaltPasskey", $saltPasskey);
         
         // Default sender email address for form notification emails
         $this->yellow->system->setDefault("MDFormEmail", "noreply@server.com");
@@ -191,7 +191,7 @@ class YellowMdform {
                         
                         // Display success message and process submission
                         $output = $this->yellow->language->getText("MDFormSubmitted") . "<br>\n";
-                        $output .= $this->processSend($path, $file, $dispatch_format, $page->getRequest("hash")); 
+                        $output .= $this->processSend($path, $file, $dispatch_format, $page->getRequest("mdform-hash")); 
                     } else {
                         // Render the form for display
                         $output = $this->getForm($path, $file);                      
@@ -574,9 +574,10 @@ class YellowMdform {
             }
             $output .= "    </div>\n";
         }
- 
-        $output .= "    <input type=\"hidden\" name=\"hash\" value=\"".$this->createHashString($this->yellow->system->get("MDFormHashPasskey"))."\" />\n";  
-        $output .= "    <input type=\"hidden\" name=\"referer\" value=\"".$this->yellow->toolbox->getServer("HTTP_REFERER")."\" />\n";
+
+        $csrfToken = $this->createHashString($this->yellow->system->get("MDFormHashSaltPasskey")); // CSRF Passkey with some salt
+        $output .= "    <input type=\"hidden\" name=\"mdform-hash\" value=\"".htmlspecialchars($csrfToken)."\" />\n";
+        $output .= "    <input type=\"hidden\" name=\"mdform-referer\" value=\"".$this->yellow->toolbox->getServer("HTTP_REFERER")."\" />\n";
         $output .= "    <input type=\"hidden\" name=\"form-status\" value=\"send\" />\n";        
         $output .= "    <button type=\"submit\">".$this->yellow->language->getText("MDFormSubmitBtn")."</button>\n  </form>\n</div>\n";
         return $output;
@@ -665,10 +666,12 @@ class YellowMdform {
         // =========================================================================
         // SECURITY: CSRF TOKEN VALIDATION
         // =========================================================================
-        if (!$this->checkHashString($hash, $this->yellow->system->get("MDFormHashPasskey"))) {
-            return "<p><em>[mdform] Error: Passkey is not valid. Please reload form and submit again.</em></p>";
+        // Update the validation at the start of processSend:
+        $receivedHash = $this->yellow->page->getRequest("mdform-hash");
+        if (!$this->checkHashString($receivedHash, $this->yellow->system->get("MDFormHashSaltPasskey"))) {
+            return "<p><em>[mdform] Error: Security token invalid or expired. Please refresh.</em></p>";
         }
-        
+
         // =========================================================================
         // SECURITY: RATE LIMITING CHECK
         // =========================================================================
@@ -730,10 +733,10 @@ class YellowMdform {
      * @param string $string Secret passkey
      * @return string SHA256 hash token
      */
-    public function createHashString($string) {
+    public function createHashString($salt) {
         $ip = $this->yellow->toolbox->getServer("REMOTE_ADDR");
         $hour = (int)(time()/3600); // Current hour block
-        $hash = $this->yellow->toolbox->createHash($string.$ip.$hour, "sha256");
+        $hash = $this->yellow->toolbox->createHash($salt.$ip.$hour, "sha256");
         if (is_string_empty($hash)) $hash = "error-hash-algorithm-sha256";
         return $hash;
     }
@@ -750,16 +753,16 @@ class YellowMdform {
      * @param string $string Secret passkey
      * @return bool True if token is valid
      */
-    public function checkHashString($hash, $string) {
+    public function checkHashString($hash, $salt) {
         $ip = $this->yellow->toolbox->getServer("REMOTE_ADDR");
         $currentHour = (int)(time()/3600);
         $previousHour = $currentHour - 1;
 
         // Check current hour AND previous hour for timing tolerance
-        return $this->yellow->toolbox->verifyHash($string.$ip.$currentHour, "sha256", $hash) || 
-               $this->yellow->toolbox->verifyHash($string.$ip.$previousHour, "sha256", $hash);
+        return $this->yellow->toolbox->verifyHash($salt.$ip.$currentHour, "sha256", $hash) || 
+               $this->yellow->toolbox->verifyHash($salt.$ip.$previousHour, "sha256", $hash);
     }
-
+    
     /**
      * ========================================================================
      * RATE LIMITING
@@ -777,15 +780,21 @@ class YellowMdform {
     private function isRateLimited() {
         $limitDir = $this->yellow->system->get("MDFormRateLimitDirectory");
         $ip = $this->yellow->toolbox->getServer("REMOTE_ADDR");
-        
         // Create unique fingerprint combining IP + User-Agent + Session
         $userAgent = $this->yellow->toolbox->getServer("HTTP_USER_AGENT") ?? '';
-        $sessionId = session_id() ?? '';
-        $fingerprint = $ip . '|' . $userAgent . '|' . $sessionId;
-        $fingerprintHash = hash("sha256", $fingerprint);
         
-        $file = $limitDir . $fingerprintHash;
+        // Fallback: If no session is active, use a fixed string 
+        // to ensure we still have a valid fingerprint anchor
+        $sessionId = session_id() ?: 'no-session';
         
+        // Primary fingerprint (Specific to this user/session)
+        $fingerprint = hash("sha256", $ip . '|' . $userAgent . '|' . $sessionId);
+        $fingerprintLimitFile = $limitDir . $fingerprint;
+        
+        // Secondary "Hard-Limit" (Optional: Per IP only)
+        // This prevents bots from clearing cookies to bypass the limit
+        $ipLimitFile = $limitDir . "ip_" . hash("sha256", $ip);
+    
         // Create rate limit directory if it doesn't exist (secure permissions)
         if (!is_dir($limitDir)) {
             mkdir($limitDir, 0700, true); // SECURE: Restrictive permissions
@@ -794,18 +803,27 @@ class YellowMdform {
         // Clean old rate limit entries (older than 1 hour)
         $this->cleanupOldRateLimitFiles($limitDir);
         
-        // Check if IP has submitted recently
-        if (file_exists($file)) {
-            $lastSubmission = (int)file_get_contents($file);
-            $waitTime = 10; // Seconds between submissions
-            
+        // Check if IP + Seeesion has submitted recently
+        if (file_exists($fingerprintLimitFile)) {
+            $lastSubmission = (int)file_get_contents($fingerprintLimitFile);
+            $waitTime = 20; // Seconds between submissions 
             if ((time() - $lastSubmission) < $waitTime) {
                 return true; // Rate limited
             }
         }
         
+        // Hard block for this IP
+        if (file_exists($ipLimitFile)) {
+            $lastIpSubmission = (int)file_get_contents($ipLimitFile);
+            $waitTime = 10; // Seconds between submissions 
+            if ((time() - $lastIpSubmission) < $waitTime) {
+                return true; // Rate limited
+            }
+        }
+        
         // Record current submission timestamp
-        file_put_contents($file, time(), LOCK_EX);
+        file_put_contents($fingerprintLimitFile, time(), LOCK_EX);
+        file_put_contents($ipLimitFile, time(), LOCK_EX);
         return false;
     }
 
@@ -963,8 +981,8 @@ class YellowMdform {
         }
         
         // Get submission metadata
-        $hash = trim($this->yellow->page->getRequest("hash"));
-        $referer = trim($this->yellow->page->getRequest("referer"));
+        $hash = trim($this->yellow->page->getRequest("mdform-hash"));
+        $referer = trim($this->yellow->page->getRequest("mdform-referer"));
         
         // Get system configuration
         $sitename = $this->yellow->system->get("sitename");
@@ -1049,5 +1067,4 @@ class YellowMdform {
         // Limit length to prevent buffer issues
         return mb_substr($subject, 0, 255, 'UTF-8');
     }
-    
 }
