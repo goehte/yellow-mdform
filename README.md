@@ -210,6 +210,7 @@ Special thanks to:
 
 Your extensions have been the main inspiration and learning resource for this extension. Thank you for sharing your knowledge with the Yellow CMS community!
 
+
 ## Ideas for improvments:
 *Note: No future enhancements planned.*  
 Possible ideas for improvements:
@@ -220,6 +221,9 @@ Possible ideas for improvements:
  * E-Mail confirmation of form data
  * Encypted file storage option (storage format TBD)
  * File upload support for images: I suggest to use the extension [Yellow Dropzone](https://github.com/GiovanniSalmeri/yellow-dropzone)
+
+For those who are new to the community, here are some tips and tricks for using the Yellow CMS API:
+https://github.com/datenstrom/community/discussions/760
 
 ## This is Alpha Software (v0.0.x)
 Use in production at your own risk. Back up your data regularly and test thoroughly before deploying to production environments.
