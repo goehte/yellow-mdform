@@ -1,0 +1,18 @@
+.mdform-container {
+    border: 1px solid var(--border);
+    border-radius: 5px; /* Optional: rounded corners */
+    padding: 1em 2em; /* Optional: add spacing inside the border */
+    margin: 1em 0; /* Optional: add spacing outside the border */
+}
+
+/* stockhom.css has standard 7 em width we change it to 2em visualization for a better list in one line */
+input[type="radio"].form-control,
+input[type="checkbox"].form-control {
+    min-width: 2em;
+}
+
+label {
+    display: inline-block; /* Allows labels to sit side-by-side */
+    margin-right: 1em; /* Adds spacing between radio buttons + text */
+    cursor: pointer; /* Ensures the cursor changes to a pointer on hover */
+}
