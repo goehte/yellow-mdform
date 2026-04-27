@@ -24,7 +24,7 @@
  * - Input sanitization for email fields
  * 
  * AUTHOR: Andreas Städler
- * DATE: 23.04.2026
+ * DATE: 28.04.2026
  * LICENSE: See extension repository
  * 
  * HISTORY
@@ -32,7 +32,8 @@
  * VERSION: 0.0.2 - Number Input added and Date min max added
  * VERSION: 0.0.3 - Input Elements optimized URL & Password added, Textareasize is variable
  * VERSION: 0.0.4 - Security updates on Rate Limit (Pure IP added)
- 
+ * VERSION: 0.0.5 - Layout and CSS optimized
+ * 
  * CONFIGURATION SETTINGS:
  * - MDFormDirectory: Directory containing form definition files
  * - MDFormDirectoryCSVOutput: Directory for CSV output files
@@ -68,7 +69,7 @@ class YellowMdform {
      * Extension version number
      * @var string
      */
-    const VERSION = "0.0.4";
+    const VERSION = "0.0.5";
     
     /**
      * Reference to Yellow CMS API instance
@@ -116,7 +117,7 @@ class YellowMdform {
         $this->yellow->system->setDefault("MDFormAllowedExtensions", "mdf, fmd, md, form");  
 
         // Optional custom stylesheet for form elements
-        $this->yellow->system->setDefault("MDFormStyleSheet", "");
+        $this->yellow->system->setDefault("MDFormStyleSheet", "mdform.css");
         
         // Language translations for UI messages
         $this->yellow->language->setDefaults(array(
@@ -458,7 +459,7 @@ class YellowMdform {
     // 2: Generate HTML output from the structured array
     private function generateHTMLForm($formData, $fileName) {
         #var_dump($formData);
-        $output = "<div class=\"mdform-wrapper\">\n  <form method=\"post\">\n";
+        $output = "<div class=\"mdform-container\">\n  <form method=\"post\">\n";
         $output .= "    <input type=\"hidden\" name=\"mdform-file\" value=\"".htmlspecialchars($fileName)."\">\n";
 
         foreach ($formData as $field) {
@@ -467,7 +468,7 @@ class YellowMdform {
             // =========================================================================
             if ($field['type'] === 'markdown') {
                 // Parse the markdown content using Yellow's parser
-                $parsedContent = $this->parseText($this->yellow->page, $field['content']);
+                $parsedContent = trim($this->parseText($this->yellow->page, $field['content']));
                 $output .= "    <div class=\"mdform-markdown\">$parsedContent</div>\n";
                 continue;
             }
@@ -478,7 +479,7 @@ class YellowMdform {
             $req = $field['required'] ? "required" : "";
             $star = $field['required'] ? $this->yellow->language->getText("MDFormMandatory") : "";
 
-            $output .= "    <div class=\"mdform-group\">\n";
+            $output .= "    <p class=\"mdform-group\">\n";
             if ($field['label']) $output .= "      <strong>{$field['label']}: $star</strong><br>\n";
 
             // Determine final HTML type
@@ -495,9 +496,9 @@ class YellowMdform {
 
             switch ($field['type']) {
                 case 'select':
-                    $output .= "      <select name=\"{$field['name']}\" $req";
+                    $output .= "      <select name=\"{$field['name']}\" class=\"form-control\" $req";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
-                    $output .= ">\n";
+                    $output .= "style=\"width:100%\" >\n";
                     $output .= "        <option value=\"\">{$field['placeholder']}</option>\n";
                     foreach ($field['options'] as $o) $output .= "        <option value=\"$o\">$o</option>\n";
                     $output .= "      </select>\n";
@@ -505,7 +506,7 @@ class YellowMdform {
                     
                 case 'radio':
                     foreach ($field['options'] as $o) {
-                        $output .= "      <label><input type=\"radio\" name=\"{$field['name']}\" value=\"$o\" $req";
+                        $output .= "      <label><input type=\"radio\" name=\"{$field['name']}\" class=\"form-control\" value=\"$o\" $req";
                         if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                         $output .= "> $o</label> \n";
                     }
@@ -513,23 +514,25 @@ class YellowMdform {
                     
                 case 'checkbox':
                     foreach ($field['options'] as $o) {
-                        $output .= "      <label><input type=\"checkbox\" name=\"{$field['name']}[]\" value=\"$o\"";
+                        $output .= "      <label><input type=\"checkbox\" name=\"{$field['name']}[]\" class=\"form-control\" value=\"$o\"";
                         if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                         $output .= "> $o</label> \n";
                     }
                     break;
                     
                 case 'toggle':
-                    $output .= "      <label class=\"switch\"><input type=\"checkbox\" name=\"{$field['name']}\" $req value=\"ON\"";
+                    $output .= "      <input type=\"checkbox\" name=\"{$field['name']}\" id=\"{$field['name']}\" class=\"form-control\" $req value=\"ON\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
-                    $output .= "></label>\n";
+                    $output .= ">\n";
+                    $output .= "      <label class=\"switch\" for=\"{$field['name']}\">";
                     # Type text next to the switch:
                     $toggle_text = preg_replace('/_/', ' ', $field['name']);
-                    if (empty($field['label'])) $output .= "$toggle_text $star<br>\n";
+                    if (empty($field['label'])) $output .= "$toggle_text $star\n";
+                    $output .= "</label>\n";
                     break;
                     
                 case 'date':
-                    $output .= "      <input type=\"date\" name=\"{$field['name']}\"";
+                    $output .= "      <input type=\"date\" name=\"{$field['name']}\" class=\"form-control\"";
                     if (isset($field['min']) && $field['min'] !== null) {
                         $output .= " min=\"" . htmlspecialchars($field['min']) . "\"";
                     }
@@ -542,7 +545,7 @@ class YellowMdform {
                     break;
                                        
                 case 'number':
-                    $output .= "      <input type=\"number\" name=\"{$field['name']}\"";
+                    $output .= "      <input type=\"number\" name=\"{$field['name']}\" class=\"form-control\"";
                     if (!empty($field['placeholder'])) {
                         $output .= " placeholder=\"" . htmlspecialchars($field['placeholder']) . "\"";
                     }
@@ -561,25 +564,25 @@ class YellowMdform {
                     break;
                     
                 case 'textarea':
-                    $output .= "      <textarea name=\"{$field['name']}\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
+                    $output .= "      <textarea name=\"{$field['name']}\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= "rows=\"{$field['min']}\"></textarea>\n";
                     break;
                     
                 case 'text':
-                    $output .= "      <input type=\"$htmlType\" name=\"{$field['name']}\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
+                    $output .= "      <input type=\"$htmlType\" name=\"{$field['name']}\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= ">\n";
                     break;
             }
-            $output .= "    </div>\n";
+            $output .= "    </p>\n";
         }
 
         $csrfToken = $this->createHashString($this->yellow->system->get("MDFormHashSaltPasskey")); // CSRF Passkey with some salt
         $output .= "    <input type=\"hidden\" name=\"mdform-hash\" value=\"".htmlspecialchars($csrfToken)."\" />\n";
         $output .= "    <input type=\"hidden\" name=\"mdform-referer\" value=\"".$this->yellow->toolbox->getServer("HTTP_REFERER")."\" />\n";
         $output .= "    <input type=\"hidden\" name=\"form-status\" value=\"send\" />\n";        
-        $output .= "    <button type=\"submit\">".$this->yellow->language->getText("MDFormSubmitBtn")."</button>\n  </form>\n</div>\n";
+        $output .= "    <p><button type=\"submit\" class=\"btn\">".$this->yellow->language->getText("MDFormSubmitBtn")."</button> </p>\n  </form>\n</div>\n";
         return $output;
     }
      
