@@ -191,7 +191,6 @@ class YellowMdform {
                         ($page->getRequest("mdform-file") === $file)) {
                         
                         // Display success message and process submission
-                        $output = $this->yellow->language->getText("MDFormSubmitted") . "<br>\n";
                         $output .= $this->processSend($path, $file, $dispatch_format, $page->getRequest("mdform-hash")); 
                     } else {
                         // Render the form for display
@@ -663,8 +662,9 @@ class YellowMdform {
      * @return string Processing result message
      */
     private function processSend($filePath, $fileName, $dispatch_format, $hash) {
-        $output = "";
-        # $output = "<p><em>[mdform] Form Status: " .  htmlspecialchars($this->yellow->page->getRequest("form-status")) . "</em></p>\n";
+
+        $output = "<div class=\"mdform-container\">\n ";
+        $output .= "<p>" . $this->yellow->language->getText("MDFormSubmitted") . "</p>\n ";
         
         // =========================================================================
         // SECURITY: CSRF TOKEN VALIDATION
@@ -702,6 +702,7 @@ class YellowMdform {
                 }
             }
         }
+        $output .= "</div>\n ";
         return $output;
     }
 
@@ -951,7 +952,7 @@ class YellowMdform {
         
         fclose($handle);
         
-        $output = $this->yellow->language->getText("MDFormCSVSaved") . "<br>\n";
+        $output = "<p>" . $this->yellow->language->getText("MDFormCSVSaved") . "</p>\n";
         return $output;
     }
 
@@ -1041,7 +1042,7 @@ class YellowMdform {
         // Build email message and send 
         $mailMessage = "$header\r\n\r\n$message\r\n-- \r\n$footer";
         $output = $this->yellow->toolbox->mail("MDForm", $mailHeaders, $mailMessage) 
-            ? ($this->yellow->language->getText("MDFormEmailSent") . "<br>\n")
+            ? ("<p>" . $this->yellow->language->getText("MDFormEmailSent") . "</p>\n")
             : "<p><em>[mdform] Error: Email not sent</em></p>";
         
         return $output;
