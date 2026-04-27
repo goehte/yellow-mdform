@@ -1,57 +1,58 @@
-### MDF Test File - All Input Types
+# This is a Test Form
+This MDF Test File contains all supported HTML input types.
 
-# Markdown Text (Non-Input):
-This is a *description* for the **form**.
+## Markdown Text (Non-Input):
+This is a example *description* text for the **form**.
 
-# Text Inputs:
+## Text Inputs:
 Name: [Enter your name]
 [Your suggestions]
 [ ]
 
-# Special Inputs :
+## Special Inputs :
 Email: [your@email.com]{email}
 Phone: [123-456-7890]{tel}
 Website: [https://example.com]{url}
 Password: [Enter your password]{password}
 
-# Required Text Inputs:
-Full Name*: [First and Last Name]{name}
+## Required Text Inputs:
+Full Name: [First and Last Name]{name}
 required field with autocomplete
 
-# Number Inputs:
+## Number Inputs:
 Number of participants: [5]
 Quantity: [3;1..5]
 Items: [;0..10]
 Price: [5.0]
 Precision: [3.14;0..10]
 
-# Text Inputs (Should NOT be treated as number)
+## Text Inputs (Should NOT be treated as number)
 Text with semicolon: [abc;1..5]
 Text with dots: [5.0]
 Text with two dots: [1..10]
 Text placeholder: [Enter your name]
 Text with range-like: [1 to 10]
 
-# Date Inputs:
+## Date Inputs:
 Event Date: [DD/MM/YYYY]
 Event Date with limitations: [DD/MM/YYYY;1979-01-01..1979-12-31]
 Event Date with TODAY limitation: [DD/MM/YYYY;TODAY..2100-12-31]
 
-# Textarea:
+## Textarea:
 Description: [Multi-line text...]
 Big Text box: [Big Multi-line text.......]
 [..........]
 
-# Dropdown Select:
+## Dropdown Select:
 Number of participants: [Please select ▼; 1 person, 2 people, 3 people]
 
-# Radio Buttons:
+## Radio Buttons:
 Gender: [( ) Male, ( ) Female, (x) Other]
 
-# Checkboxes:
+## Checkboxes:
 Interests: [[x] Sports, [ ] Music, [ ] Reading]
 
-# Toggle Switch:
+## Toggle Switch:
 Subscribe to newsletter: [ON/OFF]
 Subscribe to newsletter: [Apply: ON/OFF]
 [Subscribe: ON/OFF]*
