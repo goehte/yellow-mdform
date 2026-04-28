@@ -25,12 +25,18 @@ input.form-control:not(.switch) {
 
 /* --- Slider (The Switch) --- */
 input.form-control.switch {
-    display: none; /* Hide the box */
+    /* Instead of display: none, use this: */
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none; /* Prevents clicking the invisible box */
 }
 
 input.form-control.switch + label.switch {
     position: relative;
-    padding-left: 55px; /* Creates the "dead zone" for the slider */
+    padding-left: 55px; 
     cursor: pointer;
     display: inline-flex;
     align-items: center;
