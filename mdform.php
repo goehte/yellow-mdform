@@ -33,7 +33,7 @@
  * VERSION: 0.0.3 - Input Elements optimized URL & Password added, Textareasize is variable
  * VERSION: 0.0.4 - Security updates on Rate Limit (Pure IP added)
  * VERSION: 0.0.5 - Layout and CSS optimized
- * VERSION: 0.0.6 - Slider CSS added
+ * VERSION: 0.0.6 - Slider CSS added, Warning Bugfix
  * 
  * CONFIGURATION SETTINGS:
  * - MDFormDirectory: Directory containing form definition files
@@ -395,19 +395,22 @@ class YellowMdform {
             // Toggle input: Subscribe to newsletter: [ON/OFF] or Subscribe to newsletter: [Apply: ON/OFF]
             elseif (preg_match('/^\[(?:(.*?):\s*)?ON\/OFF\]$/i', $elementBody, $matches)) {
                 $entry['type'] = 'toggle';
-                $entry['name'] = $this->cleanName(trim($matches[1]) ?: $labelPrefix ?: "toggle_" . (++$counters['toggle']));
-            } 
+                $toggleName = isset($matches[1]) ? trim($matches[1]) : "";
+                $entry['name'] = $this->cleanName($toggleName ?: $labelPrefix ?: "toggle_" . (++$counters['toggle']));
+            }
             // Date
             // Date input: [DD/MM/YYYY] or [DD/MM/YYYY;Min..Max]
             elseif (preg_match('/^\[DD\/MM\/YYYY(?:;(\d{4}-\d{2}-\d{2}|TODAY)\.\.(\d{4}-\d{2}-\d{2}|TODAY))?\]$/', $elementBody, $dateMatches)) {
-                // Handle the "TODAY" replacement example: [DD/MM/YYYY;TODAY..1979-12-31]
-                if ($dateMatches[1] === 'TODAY') $dateMatches[1] = date('Y-m-d');
-                if ($dateMatches[2] === 'TODAY') $dateMatches[2] = date('Y-m-d');
                 $entry['type'] = 'date';
-                $entry['min'] = !empty($dateMatches[1]) ? $dateMatches[1] : null;
-                $entry['max'] = !empty($dateMatches[2]) ? $dateMatches[2] : null;
-                $entry['name'] = $this->cleanName($labelPrefix ?: "date_" . (++$counters['input']));
-            }
+                $dateMin = isset($dateMatches[1]) ? $dateMatches[1] : null;
+                $dateMax = isset($dateMatches[2]) ? $dateMatches[2] : null;
+                
+                if ($dateMin === 'TODAY') $dateMin = date('Y-m-d');
+                if ($dateMax === 'TODAY') $dateMax = date('Y-m-d');
+                
+                $entry['min'] = $dateMin;
+                $entry['max'] = $dateMax;
+            }       
             // Logic for Number/Text/Textarea detection
             elseif (preg_match('/^\[(.+)\]$/', $elementBody, $matches)) {
                 $rawContent = trim($matches[1]);
@@ -426,9 +429,11 @@ class YellowMdform {
                 elseif (preg_match('/^\[(?:(\d+(?:\.\d+)?))?(?:;(\d+(?:\.\d+)?)\.\.(\d+(?:\.\d+)?))?\]$/', $elementBody, $numberMatches)) {
                     $entry['type'] = 'number';
                     $entry['placeholder'] = !empty($numberMatches[1]) ? $numberMatches[1] : null;
-                    $entry['min'] = ($numberMatches[2] !== null) ? $numberMatches[2] : null;
-                    $entry['max'] = ($numberMatches[3]  !== null) ? $numberMatches[3] : null;
                     
+                    // FIX: Use ?? to allow "0" while preventing "Undefined array key" warnings
+                    $entry['min'] = $numberMatches[2] ?? null;
+                    $entry['max'] = $numberMatches[3] ?? null;
+                       
                     // Calculate step based on decimal precision
                     $step = "1";
                     if (preg_match('/\.\d+/', $elementBody)) {
