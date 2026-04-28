@@ -347,24 +347,49 @@ class YellowMdform {
                 $entry['placeholder'] = trim($matches[1]);
                 $entry['options'] = array_map('trim', explode(',', $matches[2]));
             } 
-            // Radio
+
+            // Radio Buttons
             elseif (preg_match('/^\[(\(\s*[xX ]?\s*\).*?)\]$/', $elementBody, $matches)) {
                 $entry['type'] = 'radio';
                 $entry['name'] = $this->cleanName($labelPrefix ?: "radio_group_" . (++$counters['radio']));
-                $parts = explode(',', $matches[1]);
+                
+                $innerContent = $matches[1]; // e.g. "( ) Male, (x) Female, (X) Other"
+
+                // Split by comma followed by a space and an opening parenthesis
+                // This ensures we don't accidentally split if a label contains a comma
+                $parts = preg_split('/,\s*(?=\()/', $innerContent);
+
                 foreach ($parts as $p) {
-                    $entry['options'][] = trim(preg_replace('/\(\s*[xX ]?\s*\)/', '', $p));
+                    // Match the (x) or ( ) part and capture the remaining text as the label
+                    if (preg_match('/\(\s*([xX ]?)\s*\)(.*)/', trim($p), $optionMatches)) {
+                        $entry['options'][] = [
+                            'value' => trim($optionMatches[2]),
+                            'checked' => (strtolower(trim($optionMatches[1])) === 'x')
+                        ];
+                    }
                 }
-            } 
-            // Checkbox
+            }
+            
+            // Checkboxes
             elseif (preg_match('/^\[(\[\s*[xX ]?\s*\].*?)\]$/', $elementBody, $matches)) {
                 $entry['type'] = 'checkbox';
                 $entry['name'] = $this->cleanName($labelPrefix ?: "check_group_" . (++$counters['check']));
-                $parts = explode(',', $matches[1]);
+                
+                $innerContent = $matches[1]; // e.g. "[x] Sports, [ ] Music, [x] Reading"
+
+                // Split by comma followed by a space and an opening bracket
+                // This ensures we don't accidentally split if a label contains a comma
+                $parts = preg_split('/,\s*(?=\[)/', $innerContent);
+
                 foreach ($parts as $p) {
-                    $entry['options'][] = trim(preg_replace('/\[\s*[xX ]?\s*\]/', '', $p));
+                    if (preg_match('/\[\s*([xX ]?)\s*\](.*)/', trim($p), $optionMatches)) {
+                        $entry['options'][] = [
+                            'value' => trim($optionMatches[2]),
+                            'checked' => (strtolower(trim($optionMatches[1])) === 'x')
+                        ];
+                    }
                 }
-            } 
+            }
             // Toggle
             // Toggle input: Subscribe to newsletter: [ON/OFF] or Subscribe to newsletter: [Apply: ON/OFF]
             elseif (preg_match('/^\[(?:(.*?):\s*)?ON\/OFF\]$/i', $elementBody, $matches)) {
@@ -457,7 +482,7 @@ class YellowMdform {
      */
     // 2: Generate HTML output from the structured array
     private function generateHTMLForm($formData, $fileName) {
-        #var_dump($formData);
+        #var_dump($formData); // for debug
         $output = "<div class=\"mdform-container\">\n  <form method=\"post\">\n";
         $output .= "    <input type=\"hidden\" name=\"mdform-file\" value=\"".htmlspecialchars($fileName)."\">\n";
 
@@ -499,34 +524,42 @@ class YellowMdform {
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= "style=\"width:100%\" >\n";
                     $output .= "        <option value=\"\">{$field['placeholder']}</option>\n";
-                    foreach ($field['options'] as $o) $output .= "        <option value=\"$o\">$o</option>\n";
+                    foreach ($field['options'] as $option) $output .= "        <option value=\"$option\">$option</option>\n";
                     $output .= "      </select>\n";
                     break;
                     
+
                 case 'radio':
-                    foreach ($field['options'] as $o) {
-                        $output .= "      <label><input type=\"radio\" name=\"{$field['name']}\" class=\"form-control\" value=\"$o\" $req";
+                    foreach ($field['options'] as $option) {
+                        $output .= "      <label><input type=\"radio\" name=\"{$field['name']}\" class=\"form-control\" value=\"{$option['value']}\" $req";
                         if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
-                        $output .= "> $o</label> \n";
+                        if ($option['checked']) $output .= " checked";
+                        $output .= "> {$option['value']}</label> \n";
                     }
-                    break;
+                    break;   
                     
                 case 'checkbox':
-                    foreach ($field['options'] as $o) {
-                        $output .= "      <label><input type=\"checkbox\" name=\"{$field['name']}[]\" class=\"form-control\" value=\"$o\"";
+                    foreach ($field['options'] as $option) {
+                        $output .= "      <label><input type=\"checkbox\" name=\"{$field['name']}[]\" class=\"form-control\" value=\"{$option['value']}\"";
                         if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
-                        $output .= "> $o</label> \n";
+                        if ($option['checked']) $output .= " checked";
+                        $output .= "> {$option['value']}</label> \n";
                     }
                     break;
                     
                 case 'toggle':
-                    $output .= "      <input type=\"checkbox\" name=\"{$field['name']}\" id=\"{$field['name']}\" class=\"form-control\" $req value=\"ON\"";
+                    $output .= "      <input type=\"checkbox\" name=\"{$field['name']}\" id=\"{$field['name']}\" class=\"form-control switch\" $req value=\"ON\"";
                     if ($field['autocomplete']) $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     $output .= ">\n";
                     $output .= "      <label class=\"switch\" for=\"{$field['name']}\">";
                     # Type text next to the switch:
-                    $toggle_text = preg_replace('/_/', ' ', $field['name']);
-                    if (empty($field['label'])) $output .= "$toggle_text $star\n";
+                    $toggle_text = $field['name'];
+                    if (strpos($toggle_text, "toggle_") !== 0) {  // If not it starts with "toggle_"                     
+                        $toggle_text = preg_replace('/_/', ' ', $toggle_text);
+                        #if (empty($field['label'])) $output .= "$toggle_text $star\n";
+                        $output .= "$toggle_text $star\n";
+                    }
+
                     $output .= "</label>\n";
                     break;
                     
