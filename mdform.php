@@ -33,6 +33,7 @@
  * VERSION: 0.0.3 - Input Elements optimized URL & Password added, Textareasize is variable
  * VERSION: 0.0.4 - Security updates on Rate Limit (Pure IP added)
  * VERSION: 0.0.5 - Layout and CSS optimized
+ * VERSION: 0.0.6 - Slider CSS added
  * 
  * CONFIGURATION SETTINGS:
  * - MDFormDirectory: Directory containing form definition files
@@ -69,7 +70,7 @@ class YellowMdform {
      * Extension version number
      * @var string
      */
-    const VERSION = "0.0.5";
+    const VERSION = "0.0.6";
     
     /**
      * Reference to Yellow CMS API instance
