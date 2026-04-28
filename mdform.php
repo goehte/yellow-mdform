@@ -1,5 +1,6 @@
 <?php
-// MDForm - Markdown Form Extension for Datenstrom Yellow
+// MDForm - Markdown Form Extension for Datenstrom Yellow 
+// https://github.com/goehte/yellow-mdform/
 // This extension allows creating HTML forms from markdown-formatted files.
 
 class YellowMdform {
