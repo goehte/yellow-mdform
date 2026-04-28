@@ -16,3 +16,61 @@ label {
     margin-right: 1em; /* Adds spacing between radio buttons + text */
     cursor: pointer; /* Ensures the cursor changes to a pointer on hover */
 }
+
+/* --- Standard Checkbox --- */
+/* We leave this alone as requested, just adding a pointer cursor */
+input.form-control:not(.switch) {
+    cursor: pointer;
+}
+
+/* --- Slider (The Switch) --- */
+input.form-control.switch {
+    display: none; /* Hide the box */
+}
+
+input.form-control.switch + label.switch {
+    position: relative;
+    padding-left: 55px; /* Creates the "dead zone" for the slider */
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    user-select: none;
+}
+
+/* The Slider Track */
+input.form-control.switch + label.switch::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 22px;
+    background-color: #ccc;
+    border-radius: 20px;
+    transition: background-color 0.2s;
+}
+
+/* The Slider Knob */
+input.form-control.switch + label.switch::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+}
+
+/* Checked States */
+input.form-control.switch:checked + label.switch::before {
+    background-color: #4CAF50;
+}
+
+input.form-control.switch:checked + label.switch::after {
+    left: 25px;
+}
