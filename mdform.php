@@ -2,6 +2,7 @@
 // MDForm - Markdown Form Extension for Datenstrom Yellow 
 // https://github.com/goehte/yellow-mdform/
 // This extension allows creating HTML forms from markdown-formatted files.
+// NOTE: All v0.0.x are Alpha Versions - Revision Date 28.04.2026
 
 class YellowMdform {
     // Extension version number
