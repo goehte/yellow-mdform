@@ -16,7 +16,7 @@ Website: [https://example.com]{url}
 Password: [Enter your password]{password}
 
 ## Required Text Inputs:
-Full Name: [First and Last Name]{name}
+Full Name: [First and Last Name]{name}*
 required field with autocomplete
 
 ## Number Inputs:
@@ -44,13 +44,13 @@ Big Text box: [Big Multi-line text.......]
 [..........]
 
 ## Dropdown Select:
-Number of participants: [Please select ▼; 1 person, 2 people, 3 people]
+Number of participants: [Please select ▼; 1 Person, 2 People, 3 People]
 
 ## Radio Buttons:
 Gender: [( ) Male, ( ) Female, (x) Other]
 
 ## Checkboxes:
-Interests: [[x] Sports, [ ] Music, [ ] Reading]
+Interests: [[x] Sports, [ ] Music, [x] Reading]
 
 ## Toggle Switch:
 Subscribe to newsletter: [ON/OFF]
