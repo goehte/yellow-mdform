@@ -2,7 +2,9 @@
 // MDForm - Markdown Form Extension for Datenstrom Yellow 
 // https://github.com/goehte/yellow-mdform/
 // This extension allows creating HTML forms from markdown-formatted files.
-// NOTE: All v0.0.x are Alpha Versions - Revision Date 28.04.2026
+// NOTE: All v0.0.x are Alpha Versions
+// Alpha Revision v0.0.6.4 - Date 29.04.2026 - Bug-fix & Enhancement: Error messages translated and new toggle feature [OFF/ON] to have preselected toggle switch
+
 
 class YellowMdform {
     // Extension version number
@@ -43,6 +45,14 @@ class YellowMdform {
             "MDFormEmailSend: Success! Data send.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
+            "MDFormWarningRateLimit: <em>Warning: Please wait a moment before submitting again.</em>",
+            "MDFormErrorMdfFileAccess: <em>[mdform] Error: Form file not found or access denied.</em>",
+            "MDFormErrorMdfFileNotFound: <em>[mdform] Error: File not found.</em>",
+            "MDFormErrorTokenInvalid: <em>[mdform] Error: Security token invalid or expired. Please refresh.</em>",
+            "MDFormErrorTokenUnable: <em>[mdform] Error: Hash algorithm: unable to create token.</em>",
+            "MDFormErrorCsvFileAccess: <em>[mdform] Error: Cannot open CSV file for writing.</em>",
+            "MDFormErrorEmailSetting: <em>[mdform] Error: Email address settings not valid.</em>",
+            "MDFormErrorEmailService: <em>[mdform] Error: Email not sent</em>",
             "Language: de",
             "MDFormSubmitBtn: Senden",
             "MDFormMandatory: *",
@@ -51,6 +61,14 @@ class YellowMdform {
             "MDFormEmailSent: Daten erfolgreich gesendet.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
+            "MDFormWarningRateLimit: <em>Warnung: Bitte warten Sie einen Moment, bevor Sie das Formular erneut absenden.</em>",
+            "MDFormErrorMdfFileAccess: <em>[mdform] Fehler: Formulardatei nicht gefunden oder Zugriff verweigert.</em>",
+            "MDFormErrorMdfFileNotFound: <em>[mdform] Fehler: Datei nicht gefunden.</em>",
+            "MDFormErrorTokenInvalid: <em>[mdform] Fehler: Sicherheits-Token ungültig oder abgelaufen. Bitte Seite aktualisieren.</em>",
+            "MDFormErrorTokenUnable: <em>[mdform] Fehler: Hash-Algorithmus: Token konnte nicht erstellt werden.</em>",
+            "MDFormErrorCsvFileAccess: <em>[mdform] Fehler: CSV-Datei konnte nicht zum Schreiben geöffnet werden.</em>",
+            "MDFormErrorEmailSetting: <em>[mdform] Fehler: E-Mail-Einstellungen sind ungültig.</em>",
+            "MDFormErrorEmailService: <em>[mdform] Fehler: E-Mail konnte nicht gesendet werden.</em>",
         ));
     }
 
@@ -72,7 +90,7 @@ class YellowMdform {
             
             // Validate path exists and is within base directory
             if ($fullPath === false || strpos($fullPath, $basePath) !== 0) {
-                $output = "<p><em>[mdform] Error: Form file not found or access denied.</em></p>\n";
+                $output .= "<p>" . $this->yellow->language->getText("MDFormErrorFileAccess") . "</p>\n ";
                 return $output;
             }
             
@@ -91,7 +109,7 @@ class YellowMdform {
                 } 
                 // Handle case where file is missing
                 else {
-                    $output = "<p><em>[mdform] Error: File not found.</em></p>\n";
+                    $output .= "<p>" . $this->yellow->language->getText("MDFormErrorMdfFileNotFound") . "</p>\n ";
                 }
             }
         }
@@ -170,14 +188,14 @@ class YellowMdform {
                 $entry['autocomplete'] = strtolower(trim($attrMatches[2]));
             }
 
-            // Identify select dropdown elements
+            // Select dropdown elements
             if (preg_match('/^\[(.*?)\s*▼\s*;\s*(.*)\]$/u', $elementBody, $matches)) {
                 $entry['type'] = 'select';
                 $entry['name'] = $this->cleanName($labelPrefix ?: "dropdown_" . (++$counters['input']));
                 $entry['placeholder'] = trim($matches[1]);
                 $entry['options'] = array_map('trim', explode(',', $matches[2]));
             } 
-            // Identify radio button groups
+            // Radio button groups
             elseif (preg_match('/^\[(\(\s*[xX ]?\s*\).*?)\]$/', $elementBody, $matches)) {
                 $entry['type'] = 'radio';
                 $entry['name'] = $this->cleanName($labelPrefix ?: "radio_group_" . (++$counters['radio']));
@@ -192,7 +210,7 @@ class YellowMdform {
                     }
                 }
             } 
-            // Identify checkbox groups
+            // Checkbox groups
             elseif (preg_match('/^\[(\[\s*[xX ]?\s*\].*?)\]$/', $elementBody, $matches)) {
                 $entry['type'] = 'checkbox';
                 $entry['name'] = $this->cleanName($labelPrefix ?: "check_group_" . (++$counters['check']));
@@ -207,13 +225,20 @@ class YellowMdform {
                     }
                 }
             }
-            // Identify toggle inputs
+            // Toggle inputs [ON/OFF]
             elseif (preg_match('/^\[(?:(.*?):\s*)?ON\/OFF\]$/i', $elementBody, $matches)) {
                 $entry['type'] = 'toggle';
                 $toggleName = isset($matches[1]) ? trim($matches[1]) : "";
                 $entry['name'] = $this->cleanName($toggleName ?: $labelPrefix ?: "toggle_" . (++$counters['toggle']));
             }
-            // Identify date inputs
+            // Toggle inputs [OFF/ON]
+            elseif (preg_match('/^\[(?:(.*?):\s*)?OFF\/ON\]$/i', $elementBody, $matches)) {
+                $entry['type'] = 'toggle';
+                $toggleName = isset($matches[1]) ? trim($matches[1]) : "";
+                $entry['name'] = $this->cleanName($toggleName ?: $labelPrefix ?: "toggle_" . (++$counters['toggle']));
+                $entry['options'][] = ['checked' => true];
+            }
+            // Date inputs
             elseif (preg_match('/^\[DD\/MM\/YYYY(?:;(\d{4}-\d{2}-\d{2}|TODAY)\.\.(\d{4}-\d{2}-\d{2}|TODAY))?\]$/', $elementBody, $dateMatches)) {
                 $entry['type'] = 'date';
                 $dateMin = isset($dateMatches[1]) ? $dateMatches[1] : null;
@@ -304,6 +329,8 @@ class YellowMdform {
         $output = "<div class=\"mdform-container\">\n  <form method=\"post\">\n";
         $output .= "    <input type=\"hidden\" name=\"mdform-file\" value=\"" . htmlspecialchars($fileName) . "\">\n";
 
+        #var_dump($formData); // Just for data structure debugging purpose
+
         // Loop through each field to generate HTML
         foreach ($formData as $field) {
             // Render non-input markdown elements
@@ -377,7 +404,7 @@ class YellowMdform {
                 case 'checkbox':
                     // Loop through checkbox options
                     foreach ($field['options'] as $option) {
-                        $output .= "      <label><input type=\"checkbox\" name=\"{$field['name']}[]\" class=\"form-control\" value=\"{$option['value']}\"";
+                        $output .= "      <label><input type=\"checkbox\" name=\"{$field['name']}[]\" class=\"form-control\" value=\"{$option['value']}\" $req";
                         // Add autocomplete
                         if ($field['autocomplete']) {
                             $output .= " autocomplete=\"{$field['autocomplete']}\"";
@@ -395,6 +422,10 @@ class YellowMdform {
                     // Add autocomplete
                     if ($field['autocomplete']) {
                         $output .= " autocomplete=\"{$field['autocomplete']}\"";
+                    }
+                    // Set checked state
+                    if (isset($field['options'][0]['checked'])) {
+                        $output .= " checked";
                     }
                     $output .= ">\n";
                     $output .= "      <label class=\"switch\" for=\"{$field['name']}\">";
@@ -521,12 +552,12 @@ class YellowMdform {
         $receivedHash = $this->yellow->page->getRequest("mdform-hash");
         // Validate CSRF token before processing
         if (!$this->checkHashString($receivedHash, $this->yellow->system->get("MDFormHashSaltPasskey"))) {
-            return "<p><em>[mdform] Error: Security token invalid or expired. Please refresh.</em></p>";
+            return "<p>" . $this->yellow->language->getText("MDFormErrorTokenInvalid") . "</p>\n ";
         }
 
         // Verify if IP is being rate limited
         if ($this->isRateLimited()) {
-            return "<p><em>[mdform] Error: Please wait a moment before submitting again.</em></p>";
+            return "<p>" . $this->yellow->language->getText("MDFormWarningRateLimit") . "</p>\n ";
         }
         
         // Execute dispatch methods if defined
@@ -701,9 +732,9 @@ class YellowMdform {
         $isNew = !file_exists($csvPath);
         $handle = fopen($csvPath, 'a');
         
-        // Handle file write failures
+        // Handle CSV file write failures
         if ($handle === false) {
-            return "<p><em>[mdform] Error: Cannot open CSV file for writing.</em></p>";
+            return "<p>" . $this->yellow->language->getText("MDFormErrorCsvFileAccess") . "</p>\n ";
         }
 
         // Write CSV header for new files
@@ -758,7 +789,7 @@ class YellowMdform {
         
         // Validate sender email address format
         if (is_string_empty($userEmail) || !filter_var($userEmail, FILTER_VALIDATE_EMAIL)) {
-            $output = "<p><em>[mdform] Error: Email address settings not valid.</em></p>";
+            $output = "<p>" . $this->yellow->language->getText("MDFormErrorEmailSetting") . "</p>\n ";
             return $output;
         }
         
@@ -780,7 +811,7 @@ class YellowMdform {
         // Execute system mail function
         $output = $this->yellow->toolbox->mail("MDForm", $mailHeaders, $mailMessage) 
             ? ("<p>" . $this->yellow->language->getText("MDFormEmailSent") . "</p>\n")
-            : "<p><em>[mdform] Error: Email not sent</em></p>";
+            : "<p>". $this->yellow->language->getText("MDFormErrorEmailService") ."</p>";
         
         return $output;
     }
