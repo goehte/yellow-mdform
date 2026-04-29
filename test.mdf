@@ -45,9 +45,10 @@ Big Text box: [Big Multi-line text.......]
 
 ## Dropdown Select:
 Number of participants: [Please select ▼; 1 Person, 2 People, 3 People]
+Favorite Fruit: [Please select ▼; Apple, Peach, Cherry]*
 
 ## Radio Buttons:
-Gender: [( ) Male, ( ) Female, (x) Other]
+Gender: [( ) Male, ( ) Female, ( ) Other]*
 
 ## Checkboxes:
 Interests: [[x] Sports, [ ] Music, [x] Reading]
@@ -57,8 +58,8 @@ Subscribe to newsletter: [ON/OFF]
 Subscribe to newsletter: [Apply: ON/OFF]
 [Subscribe: ON/OFF]*
 [ON/OFF]
-
--- -
+Preset Toggle: [de-active if needed: OFF/ON]
+---
 **Note:** All fields marked with * are required.
 
 
