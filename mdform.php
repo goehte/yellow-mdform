@@ -4,11 +4,11 @@
 // This extension allows creating HTML forms from markdown-formatted files.
 // NOTE: All v0.0.x are Alpha Versions
 // Alpha Revision v0.0.6.4 - Date 29.04.2026 - Bug-fix & Enhancement: Error messages translated and new toggle feature [OFF/ON] to have preselected toggle switch
-
+// Alpha Revision v0.0.7.1 - Date 30.04.2026 - Bug-fix & Styling
 
 class YellowMdform {
     // Extension version number
-    const VERSION = "0.0.6";
+    const VERSION = "0.0.7";
     
     // Reference to Yellow CMS API instance
     public $yellow;
@@ -31,8 +31,7 @@ class YellowMdform {
         // Default email and restriction settings
         $this->yellow->system->setDefault("MDFormEmail", "noreply@server.com");
         $this->yellow->system->setDefault("MDFormEmailRestriction", "0");
-        $this->yellow->system->setDefault("MDFormLinkRestriction", "1");
-        $this->yellow->system->setDefault("MDFormAllowedExtensions", "mdf, fmd, md, form");  
+        $this->yellow->system->setDefault("MDFormAllowedExtensions", "mdf, md, form");  
         $this->yellow->system->setDefault("MDFormStyleSheet", "mdform.css");
         
         // Language translations for UI messages
@@ -45,14 +44,14 @@ class YellowMdform {
             "MDFormEmailSend: Success! Data send.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
-            "MDFormWarningRateLimit: <em>Warning: Please wait a moment before submitting again.</em>",
-            "MDFormErrorMdfFileAccess: <em>[mdform] Error: Form file not found or access denied.</em>",
-            "MDFormErrorMdfFileNotFound: <em>[mdform] Error: File not found.</em>",
-            "MDFormErrorTokenInvalid: <em>[mdform] Error: Security token invalid or expired. Please refresh.</em>",
-            "MDFormErrorTokenUnable: <em>[mdform] Error: Hash algorithm: unable to create token.</em>",
-            "MDFormErrorCsvFileAccess: <em>[mdform] Error: Cannot open CSV file for writing.</em>",
-            "MDFormErrorEmailSetting: <em>[mdform] Error: Email address settings not valid.</em>",
-            "MDFormErrorEmailService: <em>[mdform] Error: Email not sent</em>",
+            "MDFormWarningRateLimit: <div class=\"important\">Warning: Please wait a moment before submitting again.</div>",
+            "MDFormErrorMdfFileAccess: <div class=\"important\">[mdform] Error: Form file not found or access denied.</div>",
+            "MDFormErrorMdfFileNotFound: <div class=\"important\">[mdform] Error: File not found.</div>",
+            "MDFormErrorTokenInvalid: <div class=\"important\">[mdform] Error: Security token invalid or expired. Please refresh.</div>",
+            "MDFormErrorTokenUnable: <div class=\"important\">[mdform] Error: Hash algorithm: unable to create token.</div>",
+            "MDFormErrorCsvFileAccess: <div class=\"important\">[mdform] Error: Cannot open CSV file for writing.</div>",
+            "MDFormErrorEmailSetting: <div class=\"important\">[mdform] Error: Email address settings not valid.</div>",
+            "MDFormErrorEmailService: <div class=\"important\">[mdform] Error: Email not sent</div>",
             "Language: de",
             "MDFormSubmitBtn: Senden",
             "MDFormMandatory: *",
@@ -61,14 +60,14 @@ class YellowMdform {
             "MDFormEmailSent: Daten erfolgreich gesendet.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
-            "MDFormWarningRateLimit: <em>Warnung: Bitte warten Sie einen Moment, bevor Sie das Formular erneut absenden.</em>",
-            "MDFormErrorMdfFileAccess: <em>[mdform] Fehler: Formulardatei nicht gefunden oder Zugriff verweigert.</em>",
-            "MDFormErrorMdfFileNotFound: <em>[mdform] Fehler: Datei nicht gefunden.</em>",
-            "MDFormErrorTokenInvalid: <em>[mdform] Fehler: Sicherheits-Token ungültig oder abgelaufen. Bitte Seite aktualisieren.</em>",
-            "MDFormErrorTokenUnable: <em>[mdform] Fehler: Hash-Algorithmus: Token konnte nicht erstellt werden.</em>",
-            "MDFormErrorCsvFileAccess: <em>[mdform] Fehler: CSV-Datei konnte nicht zum Schreiben geöffnet werden.</em>",
-            "MDFormErrorEmailSetting: <em>[mdform] Fehler: E-Mail-Einstellungen sind ungültig.</em>",
-            "MDFormErrorEmailService: <em>[mdform] Fehler: E-Mail konnte nicht gesendet werden.</em>",
+            "MDFormWarningRateLimit: <div class=\"important\">Warnung: Bitte warten Sie einen Moment, bevor Sie das Formular erneut absenden.</div>",
+            "MDFormErrorMdfFileAccess: <div class=\"important\">[mdform] Fehler: Formulardatei nicht gefunden oder Zugriff verweigert.</div>",
+            "MDFormErrorMdfFileNotFound: <div class=\"important\">[mdform] Fehler: Datei nicht gefunden.</div>",
+            "MDFormErrorTokenInvalid: <div class=\"important\">[mdform] Fehler: Sicherheits-Token ungültig oder abgelaufen. Bitte Seite aktualisieren.</div>",
+            "MDFormErrorTokenUnable: <div class=\"important\">[mdform] Fehler: Hash-Algorithmus: Token konnte nicht erstellt werden.</div>",
+            "MDFormErrorCsvFileAccess: <div class=\"important\">[mdform] Fehler: CSV-Datei konnte nicht zum Schreiben geöffnet werden.</div>",
+            "MDFormErrorEmailSetting: <div class=\"important\">[mdform] Fehler: E-Mail-Einstellungen sind ungültig.</div>",
+            "MDFormErrorEmailService: <div class=\"important\">[mdform] Fehler: E-Mail konnte nicht gesendet werden.</div>",
         ));
     }
 
@@ -90,7 +89,7 @@ class YellowMdform {
             
             // Validate path exists and is within base directory
             if ($fullPath === false || strpos($fullPath, $basePath) !== 0) {
-                $output .= "<p>" . $this->yellow->language->getText("MDFormErrorFileAccess") . "</p>\n ";
+                $output .= "<p>" . $this->yellow->language->getText("MDFormErrorMdfFileAccess") . "</p>\n ";
                 return $output;
             }
             
@@ -99,7 +98,8 @@ class YellowMdform {
                 // Check if the form file exists on disk
                 if (file_exists($fullPath)) {
                     // Check if this is a form submission request
-                    if (($page->getRequest("form-status") === "send") && ($page->getRequest("mdform-file") === $file)) {
+                    #if (($page->getRequest("form-status") === "send") && ($page->getRequest("mdform-file") === $file)) {
+                    if (($page->getRequest("form-status") === "send") && ($this->checkHashString($page->getRequest("mdform-file-hash"), $file))) {
                         $output .= $this->processSend($path, $file, $dispatchFormat, $page->getRequest("mdform-hash")); 
                     } 
                     // Render the form for standard display
@@ -241,6 +241,7 @@ class YellowMdform {
             // Date inputs
             elseif (preg_match('/^\[DD\/MM\/YYYY(?:;(\d{4}-\d{2}-\d{2}|TODAY)\.\.(\d{4}-\d{2}-\d{2}|TODAY))?\]$/', $elementBody, $dateMatches)) {
                 $entry['type'] = 'date';
+                $entry['name'] = $this->cleanName($labelPrefix ?: "date_" . (++$counters['input']));
                 $dateMin = isset($dateMatches[1]) ? $dateMatches[1] : null;
                 $dateMax = isset($dateMatches[2]) ? $dateMatches[2] : null;
                 
@@ -326,8 +327,9 @@ class YellowMdform {
 
     // Converts parsed form structure into HTML markup
     private function generateHTMLForm($formData, $fileName) {
-        $output = "<div class=\"mdform-container\">\n  <form method=\"post\">\n";
-        $output .= "    <input type=\"hidden\" name=\"mdform-file\" value=\"" . htmlspecialchars($fileName) . "\">\n";
+        $fileHash = $this->createHashString($fileName);
+        $output = "<div class=\"mdform-container\">\n  <form id=\"" . htmlspecialchars($fileHash) . "\" method=\"post\">\n";
+        $output .= "    <input type=\"hidden\" name=\"mdform-file-hash\" value=\"" . htmlspecialchars($fileHash) . "\">\n";
 
         #var_dump($formData); // Just for data structure debugging purpose
 
@@ -492,12 +494,12 @@ class YellowMdform {
                     break;
                 // Render standard text inputs
                 case 'text':
-                    $output .= "      <input type=\"$htmlType\" name=\"{$field['name']}\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
+                    $output .= "      <label><input type=\"$htmlType\" name=\"{$field['name']}\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
                     // Add autocomplete
                     if ($field['autocomplete']) {
                         $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     }
-                    $output .= ">\n";
+                    $output .= "></label>\n";
                     break;
             }
             $output .= "    </p>\n";
@@ -557,7 +559,7 @@ class YellowMdform {
 
         // Verify if IP is being rate limited
         if ($this->isRateLimited()) {
-            return "<p>" . $this->yellow->language->getText("MDFormWarningRateLimit") . "</p>\n ";
+            return "<p>" . $this->yellow->language->getText("MDFormWarningRateLimit") . "</p>\n " . $this->getForm($filePath, $fileName);
         }
         
         // Execute dispatch methods if defined
