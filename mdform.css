@@ -1,3 +1,6 @@
+/* mdform.css */
+/* v0.0.7 */
+
 .mdform-container {
     border: 1px solid var(--border);
     border-radius: 5px; /* Optional: rounded corners */
@@ -11,7 +14,8 @@ input[type="checkbox"].form-control {
     min-width: 2em;
 }
 
-label {
+label[type="radio"].form-control,
+label[type="checkbox"].form-control {
     display: inline-block; /* Allows labels to sit side-by-side */
     margin-right: 1em; /* Adds spacing between radio buttons + text */
     cursor: pointer; /* Ensures the cursor changes to a pointer on hover */
