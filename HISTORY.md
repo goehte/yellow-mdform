@@ -7,9 +7,8 @@ VERSION: 0.0.4 - Security updates on Rate Limit (Pure IP added)
 VERSION: 0.0.5 - Layout and CSS optimized  
 VERSION: 0.0.6 - Slider CSS added  
 VERSION: 0.0.7 - Bugfix and error messages improved
+
 ---
-
-
 
 ### Main Idea of this Extension
 My primary goal was to create a tool that could generate customised web forms within the Yellow CMS environment, save form data directly to a CSV file, and send an email containing the provided form data. 
