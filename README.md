@@ -1,5 +1,5 @@
 # MDForm
-*Status 0.0.6 alpha (experimental)*
+*Status 0.0.7 alpha (experimental)*
 
 **MDForm** is an extension for [Datenstrom Yellow](https://datenstrom.se/yellow/) that allows you to create HTML forms using simple Markdown-formatted files.  
 It provides a secure way to collect data, supporting multiple input types and dispatch methods such as email notifications and CSV logging.
