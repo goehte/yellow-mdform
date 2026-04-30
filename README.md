@@ -59,11 +59,12 @@ You can customize the extension behavior in your `system/config/config.ini` file
 Create a file (e.g., `contact.mdf`) in `media/forms/`. Use the following syntax:
 
 ```markdown
-Name: [Enter your name]*
-E-Mail: [email]{email}*
-Interests: [[x] Sports, [ ] Music, [x] Reading]
-Newsletter: [OFF/ON]
-Message: [... Write your message]*
+### A Simple Contact Form
+Full Name: [Your First and Last Name]{name}*
+Email: [your@email.com]{email}*
+Birthday: [DD/MM/YYYY;1900-01-01..TODAY]
+Message: [Your message to us.....]
+Newsletter: [Subscribe to newsletter: OFF/ON]
 ```
 
 *   `*` denotes a mandatory field.
