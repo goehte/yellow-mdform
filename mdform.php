@@ -4,11 +4,13 @@
 // This extension allows creating HTML forms from markdown-formatted files.
 // NOTE: All v0.0.x are Alpha Versions
 // Alpha Revision v0.0.6.4 - Date 29.04.2026 - Bug-fix & Enhancement: Error messages translated and new toggle feature [OFF/ON] to have preselected toggle switch
-// Alpha Revision v0.0.7.1 - Date 30.04.2026 - Bug-fix & Styling
+// Alpha Revision v0.0.7.2 - Date 30.04.2026 - Bug-fix & Styling
+// Alpha Revision v0.0.8.1 - Date 30.04.2026 - Added Cookie to avoid resubmits
+// Alpha Revision v0.0.8.2 - Date 01.05.2026 - Mail Header on Page YAML added
 
 class YellowMdform {
     // Extension version number
-    const VERSION = "0.0.7";
+    const VERSION = "0.0.8";
     
     // Reference to Yellow CMS API instance
     public $yellow;
@@ -20,7 +22,7 @@ class YellowMdform {
         // Directory for storing form definition files
         $this->yellow->system->setDefault("MDFormDirectory", "media/forms/");
         // Directory for storing CSV output files
-        $this->yellow->system->setDefault("MDFormDirectoryCSVOutput", "media/tables/");
+        $this->yellow->system->setDefault("MDFormDirectoryCSVOutput", "media/tables/forms/");
         // Directory for rate limiting files
         $this->yellow->system->setDefault("MDFormRateLimitDirectory", "cache/mdform/ratelimit/");
         
@@ -33,6 +35,7 @@ class YellowMdform {
         $this->yellow->system->setDefault("MDFormEmailRestriction", "0");
         $this->yellow->system->setDefault("MDFormAllowedExtensions", "mdf, md, form");  
         $this->yellow->system->setDefault("MDFormStyleSheet", "mdform.css");
+        $this->yellow->system->setDefault("MDFormResubmitCookie", "1");
         
         // Language translations for UI messages
         $this->yellow->language->setDefaults(array(
@@ -45,10 +48,10 @@ class YellowMdform {
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
             "MDFormWarningRateLimit: <div class=\"important\">Warning: Please wait a moment before submitting again.</div>",
+            "MDFormWarningResubmit: <div class=\"important\">Warning: Please do not resubmit successful sent forms.</div>",
             "MDFormErrorMdfFileAccess: <div class=\"important\">[mdform] Error: Form file not found or access denied.</div>",
             "MDFormErrorMdfFileNotFound: <div class=\"important\">[mdform] Error: File not found.</div>",
-            "MDFormErrorTokenInvalid: <div class=\"important\">[mdform] Error: Security token invalid or expired. Please refresh.</div>",
-            "MDFormErrorTokenUnable: <div class=\"important\">[mdform] Error: Hash algorithm: unable to create token.</div>",
+            "MDFormErrorTokenInvalid: <div class=\"important\">[mdform] Error: Security token invalid or expired. Please refresh page.</div>",
             "MDFormErrorCsvFileAccess: <div class=\"important\">[mdform] Error: Cannot open CSV file for writing.</div>",
             "MDFormErrorEmailSetting: <div class=\"important\">[mdform] Error: Email address settings not valid.</div>",
             "MDFormErrorEmailService: <div class=\"important\">[mdform] Error: Email not sent</div>",
@@ -61,10 +64,10 @@ class YellowMdform {
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
             "MDFormWarningRateLimit: <div class=\"important\">Warnung: Bitte warten Sie einen Moment, bevor Sie das Formular erneut absenden.</div>",
+            "MDFormWarningResubmit: <div class=\"important\">Warnung: Bitte senden Sie erfolgreich abgesendete Formulare nicht mehrfach ab..</div>",
             "MDFormErrorMdfFileAccess: <div class=\"important\">[mdform] Fehler: Formulardatei nicht gefunden oder Zugriff verweigert.</div>",
             "MDFormErrorMdfFileNotFound: <div class=\"important\">[mdform] Fehler: Datei nicht gefunden.</div>",
             "MDFormErrorTokenInvalid: <div class=\"important\">[mdform] Fehler: Sicherheits-Token ungültig oder abgelaufen. Bitte Seite aktualisieren.</div>",
-            "MDFormErrorTokenUnable: <div class=\"important\">[mdform] Fehler: Hash-Algorithmus: Token konnte nicht erstellt werden.</div>",
             "MDFormErrorCsvFileAccess: <div class=\"important\">[mdform] Fehler: CSV-Datei konnte nicht zum Schreiben geöffnet werden.</div>",
             "MDFormErrorEmailSetting: <div class=\"important\">[mdform] Fehler: E-Mail-Einstellungen sind ungültig.</div>",
             "MDFormErrorEmailService: <div class=\"important\">[mdform] Fehler: E-Mail konnte nicht gesendet werden.</div>",
@@ -77,15 +80,15 @@ class YellowMdform {
         
         // Only process elements named "mdform"
         if ($name == "mdform" && ($type == "block" || $type == "inline")) {
-            list($file, $dispatchFormat) = $this->yellow->toolbox->getTextArguments($text); 
-            $path = $this->yellow->system->get("MDFormDirectory");
+            list($fileName, $dispatchFormat) = $this->yellow->toolbox->getTextArguments($text); 
+            $filePath = $this->yellow->system->get("MDFormDirectory");
             
             // Strip all path components to prevent directory traversal
-            $file = basename(trim($file));
+            $fileName = basename(trim($fileName));
             
             // Verify the resolved path is within the allowed base directory
-            $fullPath = realpath($path . $file);
-            $basePath = realpath($path);
+            $fullPath = realpath($filePath . $fileName);
+            $basePath = realpath($filePath);
             
             // Validate path exists and is within base directory
             if ($fullPath === false || strpos($fullPath, $basePath) !== 0) {
@@ -94,17 +97,16 @@ class YellowMdform {
             }
             
             // Process form if filename provided
-            if (!empty($file)) {
+            if (!empty($fileName)) {
                 // Check if the form file exists on disk
                 if (file_exists($fullPath)) {
                     // Check if this is a form submission request
-                    #if (($page->getRequest("form-status") === "send") && ($page->getRequest("mdform-file") === $file)) {
-                    if (($page->getRequest("form-status") === "send") && ($this->checkHashString($page->getRequest("mdform-file-hash"), $file))) {
-                        $output .= $this->processSend($path, $file, $dispatchFormat, $page->getRequest("mdform-hash")); 
+                    if (($page->getRequest("form-status") === "send") && ($this->checkHashString($page->getRequest("mdform-file-hash"), $fileName))) {
+                        $output .= $this->processSend($filePath, $fileName, $dispatchFormat, $page->getRequest("mdform-hash")); 
                     } 
                     // Render the form for standard display
                     else {
-                        $output = $this->getForm($path, $file);                      
+                        $output = $this->getForm($filePath, $fileName);                      
                     }
                 } 
                 // Handle case where file is missing
@@ -510,6 +512,7 @@ class YellowMdform {
         $output .= "    <input type=\"hidden\" name=\"mdform-referer\" value=\"" . $this->yellow->toolbox->getServer("HTTP_REFERER") . "\" />\n";
         $output .= "    <input type=\"hidden\" name=\"form-status\" value=\"send\" />\n";        
         $output .= "    <p><button type=\"submit\" class=\"btn\">" . $this->yellow->language->getText("MDFormSubmitBtn") . "</button> </p>\n  </form>\n</div>\n";
+
         return $output;
     }
      
@@ -543,6 +546,7 @@ class YellowMdform {
                 ];
             }
         }
+        #var_dump($formStructure); // Just for data structure debugging purpose
         return $formStructure;
     }
 
@@ -552,14 +556,27 @@ class YellowMdform {
         $output .= "<p>" . $this->yellow->language->getText("MDFormSubmitted") . "</p>\n ";
         
         $receivedHash = $this->yellow->page->getRequest("mdform-hash");
+ 
         // Validate CSRF token before processing
         if (!$this->checkHashString($receivedHash, $this->yellow->system->get("MDFormHashSaltPasskey"))) {
-            return "<p>" . $this->yellow->language->getText("MDFormErrorTokenInvalid") . "</p>\n ";
+            return "<p>" . $this->yellow->language->getText("MDFormErrorTokenInvalid") . "</p>\n " . $this->getForm($filePath, $fileName);
         }
 
         // Verify if IP is being rate limited
         if ($this->isRateLimited()) {
             return "<p>" . $this->yellow->language->getText("MDFormWarningRateLimit") . "</p>\n " . $this->getForm($filePath, $fileName);
+        }
+
+        if ($this->yellow->system->get("MDFormResubmitCookie"))  {
+            // Validate resubmit with token
+            if ($this->yellow->toolbox->getCookie($receivedHash) === "yellowmdformhash") {
+                return "<p>" . $this->yellow->language->getText("MDFormWarningResubmit") . "</p>\n " . $this->getForm($filePath, $fileName);
+            } else {
+                // Create a Cookie
+                $this->createCookie($receivedHash, "yellowmdformhash");
+                // Destroy Cookie
+                #$this->destroyCookie($receivedHash);
+            } 
         }
         
         // Execute dispatch methods if defined
@@ -624,7 +641,7 @@ class YellowMdform {
         
         // Create unique visitor fingerprint
         $fingerprint = hash("sha256", $ip . '|' . $userAgent . '|' . $sessionId);
-        $fingerprintLimitFile = $limitDir . $fingerprint;
+        $fingerprintLimitFile = $limitDir . "fp_" . $fingerprint;
         $ipLimitFile = $limitDir . "ip_" . hash("sha256", $ip);
     
         // Initialize limit storage directory
@@ -678,6 +695,24 @@ class YellowMdform {
         }
     }
 
+    // Create browser cookies
+    private function createCookie($name, $value) {
+        $expire = 0;
+        $scheme = $this->yellow->system->get("coreServerScheme");
+        $address = $this->yellow->system->get("coreServerAddress");
+        $base = $this->yellow->system->get("coreServerBase");
+        $path = $this->yellow->page->getLocation();
+        setcookie($name, $value, $expire, $base.$path, "", $scheme=="https", true);
+    }
+    
+    // Destroy browser cookies
+    private function destroyCookie($name) {
+        $scheme = $this->yellow->system->get("coreServerScheme"); // Match creation logic
+        $base = $this->yellow->system->get("coreServerBase");
+        $path = $this->yellow->page->getLocation();
+        setcookie($name, "", 1, $base.$path, "", $scheme=="https", true);
+    }
+    
     // Dispatch: Formats submitted data as HTML
     private function subDispatchHtml($formStructure) {
         $output = ""; 
@@ -698,8 +733,7 @@ class YellowMdform {
         $escape = "\\";
         
         $csvPath = $this->yellow->system->get("MDFormDirectoryCSVOutput") . $fileName . ".csv"; 
-        $expectedHeaders = array_keys($formStructure);
-
+        $expectedHeaders = array_merge(["mdform-timestamp"], ["mdform-hash"], array_keys($formStructure));  // Store also the mdform-hash within the CSV data
         $csvDir = dirname($csvPath);
         // Ensure CSV directory exists
         if (!is_dir($csvDir)) {
@@ -721,8 +755,7 @@ class YellowMdform {
         $dataRow = [];
         // Map submitted values to expected headers
         foreach ($expectedHeaders as $header) {
-            $val = $this->yellow->page->getRequest($header);
-            
+            $val = ($header === "mdform-timestamp") ? date("Y-m-d H:i:s") : $this->yellow->page->getRequest($header);
             // Join array values with semicolons
             if (is_array($val)) {
                 $val = implode("; ", $val); 
@@ -784,6 +817,14 @@ class YellowMdform {
         if ($this->yellow->page->isExisting("email") && !$this->yellow->system->get("MDFormEmailRestriction")) {
             $userEmail = $this->yellow->page->get("email");
         }
+        // Apply page-specific email overrides if allowed
+        if ($this->yellow->page->isExisting("MDFormMailHeader") && !$this->yellow->system->get("MDFormEmailRestriction")) {
+            $headerText = $this->yellow->page->get("MDFormMailHeader");
+        }
+        // Apply page-specific email overrides if allowed
+        if ($this->yellow->page->isExisting("MDFormMailFooter") && !$this->yellow->system->get("MDFormEmailRestriction")) {
+            $footerText = $this->yellow->page->get("MDFormMailFooter");
+        }
         
         $userName = $this->sanitizeEmailName($userName);
         $userEmail = $this->sanitizeEmailAddress($userEmail);
@@ -809,7 +850,7 @@ class YellowMdform {
             "X-Request-Url" => $this->yellow->page->getUrl()
         );
         
-        $mailMessage = "$headerText\r\n\r\n$message\r\n-- \r\n$footerText";
+        $mailMessage = "$headerText\r\n\r\n$message\r\n\r\n$footerText";
         // Execute system mail function
         $output = $this->yellow->toolbox->mail("MDForm", $mailHeaders, $mailMessage) 
             ? ("<p>" . $this->yellow->language->getText("MDFormEmailSent") . "</p>\n")
