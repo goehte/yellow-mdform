@@ -128,7 +128,7 @@ Adding as third parameter `captcha` to the `[mdform]` shortcut.
 
 ### Turn Autocomplete on or off
 In the page YAML header add this:  
-`[MDFormAutocomplete: OFF]` or `[MDFormAutocomplete: ON]`
+`MDFormAutocomplete: OFF] or `MDFormAutocomplete: ON`
 *Note: most modern browsers seems not to repect this setting*  
 
 ## Support
