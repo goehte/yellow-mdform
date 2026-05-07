@@ -127,3 +127,65 @@ Or increase timeout value in the code (actual time between submit a form form on
 
 For those who are new to the community, here are some tips and tricks for using the Yellow CMS API:
 https://github.com/datenstrom/community/discussions/760
+
+
+```mermaid
+---
+title: mdform.php v0.0.9
+---
+sequenceDiagram
+    autonumber
+    participant Browser as Browser
+    participant Server as Server (Yellow CMS - mdform.php)
+    participant Page as page.md
+    participant SysIni as yellow-system.ini
+    participant MDF as Form (.mdf)
+    participant CSV as CSV Database
+    participant EmailAdmin as Email Admin
+    participant EmailSender as Email Sender (User)
+
+    %% --- Initialization & Rendering ---
+    Page->>Server: Request Page with [mdform]
+    
+    Note over Page: Dispatch options: (html, csv, email)<br/>Page options: CAPTCHA
+    
+    Page->>Server: Load page specific YAML Settings
+    
+    Note over Page: YAML Settings (Page Specific):<br/>MDFormAutocomplete: OFF/ON<br/>MDFormMailHeader: Custom Text<br/>MDFormMailFooter: Custom Text<br/>MDFormEmailRestriction: 0/1<br/>MDFormResubmitCookie: 0/1
+    
+    SysIni->>Server: Load Default Settings<br/>(Directories, Email, Salt, Limits)<br/>Note over SysIni: Values set via setDefault()<br/>are copied here on first run
+    
+    MDF->>Server: Read Form Definition
+    Note over MDF: Parse Markdown:<br/>Text, Radio, Checkbox,<br/>Toggle, Date, Number, Select
+    
+    Server->>Browser: Render HTML Form<br/>(Includes CSRF Token, CAPTCHA, Styles)
+
+    %% --- Submission Process ---
+    Browser->>Server: POST Form Data<br/>(mdform-status=send)
+    
+    alt Validation Failed
+        Note right of Server: Checks performed:<br/>1. CSRF Token (Hash)<br/>2. Rate Limit (IP/Fingerprint)<br/>3. CAPTCHA Verification<br/>4. Resubmit Cookie
+        Server-->>Browser: Show Error/Warning<br/>(Re-render Form with Data)
+    else Validation Successful
+        Server->>Server: Process Dispatch Commands<br/>(html, csv, email)
+        
+        opt Dispatch: HTML Output
+            Server->>Browser: Display Submitted Data
+        end
+        
+        opt Dispatch: CSV Export
+            Server->>CSV: Append Row<br/>(Timestamp, Hash, Data)
+            Note over CSV: Backup created if headers mismatch
+        end
+        
+        opt Dispatch: Email Notification
+            Server->>Server: Extract Sender Data<br/>(Name/Email from fields)
+            Server->>Server: Build Message<br/>(Header/Footer from YAML or SysIni)
+            Server-->>EmailAdmin: Send Notification<br/>(To: Configured Admin)
+            Note over EmailSender: Reply-To: Sender Email
+        end
+        
+        Server->>Browser: Success Message
+        Server->>Server: Set Resubmit Cookie
+    end
+```
