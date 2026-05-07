@@ -1,5 +1,5 @@
 # MDForm
-*Status 0.0.7 alpha (experimental)*
+*Status 0.0.9 alpha (experimental)*
 
 **MDForm** is an extension for [Datenstrom Yellow](https://datenstrom.se/yellow/) that allows you to create HTML forms using simple Markdown-formatted files.  
 It provides a secure way to collect data, supporting multiple input types and dispatch methods such as email notifications and CSV logging.
@@ -82,9 +82,54 @@ Add the form to any Yellow page using the `[mdform]` shortcut:
 This will display the form from `contact.mdf`, send an email, save the result to a CSV, and show a confirmation on the page.
 Just remove the options you not would like to use.
 
-## Customization
+## CSS Customization
 
 You can style the form by editing `media/assets/mdform.css`. The extension wraps all elements in a `.mdform-container` class and uses `.mdform-group` for individual fields for easy targeting.
+
+## Settings
+
+### Customize Email Text
+Update the text in `system/settings/system.ini:` if you want to change it for all your forms.  
+For page specific email text add a YAML to the page header:  
+```
+MDFormMailHeader:  Page Custom Header
+MDFormMailFooter:  Page Custom Footer
+```
+You can use field valiables to use text elements:  
+**Example:**  
+```
+MDFormMailHeader:  Thanks for you email @sendershort \n this mail was sent from @sender  
+MDFormMailFooter:  @title :: @sitename \n Please reply to: @usermail @author  
+```
+This variables are avilable: 
+```
+**Header:**  
+@sendershort -> Output: $name - Example Result: John Doe  
+@sender -> Output: $name <$email> - Example Result: John Doe <john.doe@mail.com>  
+```
+Note this variable only avilabe if the form (.mdf file) contins related fields with the `{autofill}` option:  
+```
+Your Name: [Your First and Last Name]{name}  
+Your Email: [your@email.com]{email}  
+```
+
+```
+**Footer:**  
+@sitename -> Sitename as defined in `yellow-system.ini`  
+@sitemail -> Email address from the setting in `yellow-system.ini` (standard setting is just "noreply")  
+@usermail -> Email address auf the author  
+@author -> Author of the page  
+@title -> Title of the page  
+```
+### Adding CAPTCHA to Form
+Adding as third parameter `captcha` to the `[mdform]` shortcut. 
+**Example:**  
+`[mdform contact.mdf html,email captcha]`
+
+### Turn Autocomplete on or off
+In the page YAML header add this:  
+`[MDFormAutocomplete: OFF]` or `[MDFormAutocomplete: ON]`
+*Note: most modern browsers seems not to repect this setting*  
 
 ## Support
 
