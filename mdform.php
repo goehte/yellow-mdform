@@ -7,10 +7,12 @@
 // Alpha Revision v0.0.7.2 - Date 30.04.2026 - Bug-fix & Styling
 // Alpha Revision v0.0.8.1 - Date 30.04.2026 - Added Cookie to avoid resubmits
 // Alpha Revision v0.0.8.2 - Date 01.05.2026 - Mail Header on Page YAML added
+// Alpha Revision v0.0.8.3 - Date 05.05.2026 - E-Mail sending updated
+// Alpha Revision v0.0.9.1 - Date 06.05.2026 - Image CAPTCHA added, pre-fill HTML during resubmit added
 
 class YellowMdform {
     // Extension version number
-    const VERSION = "0.0.8";
+    const VERSION = "0.0.9";
     
     // Reference to Yellow CMS API instance
     public $yellow;
@@ -31,11 +33,12 @@ class YellowMdform {
         $this->yellow->system->setDefault("MDFormHashSaltPasskey", $saltPasskey);
         
         // Default email and restriction settings
-        $this->yellow->system->setDefault("MDFormEmail", "noreply@server.com");
         $this->yellow->system->setDefault("MDFormEmailRestriction", "0");
+        $this->yellow->system->setDefault("MDFormLinkRestriction", "0");
+        $this->yellow->system->setDefault("MDFormResubmitCookie", "0");
         $this->yellow->system->setDefault("MDFormAllowedExtensions", "mdf, md, form");  
         $this->yellow->system->setDefault("MDFormStyleSheet", "mdform.css");
-        $this->yellow->system->setDefault("MDFormResubmitCookie", "1");
+        $this->yellow->system->setDefault("MDFormKeyValueSeperator", ": \t");
         
         // Language translations for UI messages
         $this->yellow->language->setDefaults(array(
@@ -43,10 +46,14 @@ class YellowMdform {
             "MDFormSubmitBtn: Submit",
             "MDFormMandatory: *",
             "MDFormSubmitted: <strong>Form successfully submitted</strong>",
+            "MDFormHTMLOutput: You have provided the following data:",
             "MDFormCSVSaved: Success! Data saved.",
             "MDFormEmailSend: Success! Data send.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
+            "MDFormNotifySendCopy: Please email me a copy of this form.",
+            "MDFormCaptchaForm: Please enter the numerical CAPTCHA from the picture in the form field.",
+            "MDFormCaptchaInvalid: <div class=\"important\">The entered CAPTCHA have been incorrect.</div>",            
             "MDFormWarningRateLimit: <div class=\"important\">Warning: Please wait a moment before submitting again.</div>",
             "MDFormWarningResubmit: <div class=\"important\">Warning: Please do not resubmit successful sent forms.</div>",
             "MDFormErrorMdfFileAccess: <div class=\"important\">[mdform] Error: Form file not found or access denied.</div>",
@@ -59,10 +66,14 @@ class YellowMdform {
             "MDFormSubmitBtn: Senden",
             "MDFormMandatory: *",
             "MDFormSubmitted: <strong>Formular erfolgreich abgesendet.</strong>",
+            "MDFormHTMLOutput: Sie haben die folgenden Daten übermittelt:",
             "MDFormCSVSaved: Daten erfolgreich gespeichert.",
             "MDFormEmailSent: Daten erfolgreich gesendet.",
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
+            "MDFormNotifySendCopy: Bitte senden Sie mir eine Kopie dieses Formulars per E-Mail.",
+            "MDFormCaptchaForm: <small>Bitte geben sie das numerische CAPTCHA von dem Bild in das Formularfeld ein.</small>",
+            "MDFormCaptchaInvalid: <div class=\"important\">Das eingegebene CAPTCHA ist nicht korrekt.</div>",         
             "MDFormWarningRateLimit: <div class=\"important\">Warnung: Bitte warten Sie einen Moment, bevor Sie das Formular erneut absenden.</div>",
             "MDFormWarningResubmit: <div class=\"important\">Warnung: Bitte senden Sie erfolgreich abgesendete Formulare nicht mehrfach ab..</div>",
             "MDFormErrorMdfFileAccess: <div class=\"important\">[mdform] Fehler: Formulardatei nicht gefunden oder Zugriff verweigert.</div>",
@@ -74,13 +85,18 @@ class YellowMdform {
         ));
     }
 
+    // Page YAML Options
+    // MDFormAutocomplete: OFF or ON
+    // MDFormMailHeader: 
+    // MDFormMailFooter: 
+
     // Main entry point for form element parsing
     public function onParseContentElement($page, $name, $text, $attributes, $type) {
         $output = null;
         
         // Only process elements named "mdform"
         if ($name == "mdform" && ($type == "block" || $type == "inline")) {
-            list($fileName, $dispatchFormat) = $this->yellow->toolbox->getTextArguments($text); 
+            list($fileName, $dispatchFormat, $formOptions) = $this->yellow->toolbox->getTextArguments($text); 
             $filePath = $this->yellow->system->get("MDFormDirectory");
             
             // Strip all path components to prevent directory traversal
@@ -101,12 +117,18 @@ class YellowMdform {
                 // Check if the form file exists on disk
                 if (file_exists($fullPath)) {
                     // Check if this is a form submission request
-                    if (($page->getRequest("form-status") === "send") && ($this->checkHashString($page->getRequest("mdform-file-hash"), $fileName))) {
-                        $output .= $this->processSend($filePath, $fileName, $dispatchFormat, $page->getRequest("mdform-hash")); 
-                    } 
+                    #if (($page->getRequest("mdform-status") === "send") && ($this->checkHashString($page->getRequest("mdform-file"), $fileName))) {
+                    if (($page->getRequest("mdform-status") === "send") && ($this->checkHashString($page->getRequest("mdform-file"), $fileName))) {
+                        $output .= $this->processSend($filePath, $fileName, $dispatchFormat, $formOptions); 
+                    }
+                    // Validate Form
+                    elseif ($page->getRequest("mdform-status") === "validate") {
+                    #elseif (($page->getRequest("mdform-status") === "validate") && ($this->checkHashString($page->getRequest("mdform-file"), $fileName))) {
+                        $output .= "Validate: " . $fileName;
+                    }
                     // Render the form for standard display
                     else {
-                        $output = $this->getForm($filePath, $fileName);                      
+                        $output = $this->getFormHTML($filePath, $fileName, $formOptions, false);                      
                     }
                 } 
                 // Handle case where file is missing
@@ -134,7 +156,7 @@ class YellowMdform {
     }
 
     // Loads and validates form definition files
-    private function getForm($filePath, $fileName) {
+    private function getFormHTML($filePath, $fileName, $formOptions, $prefillValues = false) {
         $fileType = $this->yellow->toolbox->getFileType($filePath . $fileName);
         $allowed = $this->yellow->system->get("MDFormAllowedExtensions");
         $allowed = array_map('trim', explode(',', $allowed));
@@ -142,7 +164,7 @@ class YellowMdform {
         // Only process allowed file extensions
         if (is_array($allowed) && in_array($fileType, $allowed)) {
             $formData = $this->readMarkdown(file_get_contents($filePath . $fileName));
-            return $this->generateHTMLForm($formData, $fileName);
+            return $this->generateHTMLForm($formData, $fileName, $formOptions, $prefillValues);
         }
         return false;
     }
@@ -328,10 +350,17 @@ class YellowMdform {
     }
 
     // Converts parsed form structure into HTML markup
-    private function generateHTMLForm($formData, $fileName) {
-        $fileHash = $this->createHashString($fileName);
-        $output = "<div class=\"mdform-container\">\n  <form id=\"" . htmlspecialchars($fileHash) . "\" method=\"post\">\n";
-        $output .= "    <input type=\"hidden\" name=\"mdform-file-hash\" value=\"" . htmlspecialchars($fileHash) . "\">\n";
+    private function generateHTMLForm($formData, $fileName, $formOoptions, $prefillValues) {
+        $fileHash = $this->createHashString($fileName); 
+        $autocompleteValue = strtolower($this->yellow->page->get("MDFormAutocomplete"));
+        
+        $output = "<div class=\"mdform-container\">\n  <form id=\"" . htmlspecialchars($fileHash) . "\" method=\"post\"";
+        // Allow to turn off autocomplete
+        if (in_array($autocompleteValue, ['on', 'off'])) {
+            $output .= " autocomplete=\"" . $autocompleteValue . "\"";
+        }
+        $output .= ">\n";
+        $output .= "    <input type=\"hidden\" name=\"mdform-file\" value=\"" . htmlspecialchars($fileHash) . "\">\n";
 
         #var_dump($formData); // Just for data structure debugging purpose
 
@@ -350,7 +379,7 @@ class YellowMdform {
             $output .= "    <p class=\"mdform-group\">\n";
             // Add label if it exists
             if ($field['label']) {
-                $output .= "      <strong>{$field['label']}: $star</strong><br>\n";
+                $output .= "      <strong>{$field['label']}: $star</strong><br />\n";
             }
 
             $htmlType = $field['type'];
@@ -372,9 +401,11 @@ class YellowMdform {
             }
 
             // Generate field markup based on type
+
             switch ($field['type']) {
                 // Render select dropdowns
                 case 'select':
+                    $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
                     $output .= "      <select name=\"{$field['name']}\" class=\"form-control\" $req";
                     // Append autocomplete attribute
                     if ($field['autocomplete']) {
@@ -384,12 +415,15 @@ class YellowMdform {
                     $output .= "        <option value=\"\">{$field['placeholder']}</option>\n";
                     // Add dropdown options
                     foreach ($field['options'] as $option) {
-                        $output .= "        <option value=\"$option\">$option</option>\n";
+                        $output .= "        <option value=\"$option\"" . (($option === $value) ? " selected": "") . ">$option</option>\n";
                     }
                     $output .= "      </select>\n";
                     break;
                 // Render radio buttons
                 case 'radio':
+                     $value = ($prefillValues === true) ? $this->yellow->page->getRequest($field['name']) : "";
+                     var_dump($value);
+                     echo "- radio <br>\n";
                     // Loop through radio options
                     foreach ($field['options'] as $option) {
                         $output .= "      <label><input type=\"radio\" name=\"{$field['name']}\" class=\"form-control\" value=\"{$option['value']}\" $req";
@@ -398,7 +432,11 @@ class YellowMdform {
                             $output .= " autocomplete=\"{$field['autocomplete']}\"";
                         }
                         // Set checked state
-                        if ($option['checked']) {
+                        if ($option['checked'] && ($prefillValues !== true)) {
+                            $output .= " checked";
+                        }
+                        // Set checked state during resubmit
+                        if ($prefillValues === true && ($value === $option['value'])) {
                             $output .= " checked";
                         }
                         $output .= "> {$option['value']}</label> \n";
@@ -406,6 +444,9 @@ class YellowMdform {
                     break;   
                 // Render checkboxes
                 case 'checkbox':
+                    $value = ($prefillValues === true) ? $this->yellow->page->getRequest($field['name']) : "";
+                     var_dump($value);
+                     echo "- check <br>\n";
                     // Loop through checkbox options
                     foreach ($field['options'] as $option) {
                         $output .= "      <label><input type=\"checkbox\" name=\"{$field['name']}[]\" class=\"form-control\" value=\"{$option['value']}\" $req";
@@ -414,21 +455,31 @@ class YellowMdform {
                             $output .= " autocomplete=\"{$field['autocomplete']}\"";
                         }
                         // Set checked state
-                        if ($option['checked']) {
+                        if ($option['checked'] && ($prefillValues !== true)) {
                             $output .= " checked";
+                        }
+                        // Set checked state during resubmit
+                        if ($prefillValues === true) {
+                            foreach ($value as $val) {
+                                ($val === $option['value']) ? $output .= " checked" : $output .= "";
+                            }
                         }
                         $output .= "> {$option['value']}</label> \n";
                     }
                     break;
                 // Render toggle switch
                 case 'toggle':
+                    $value = ($prefillValues === true) ? $this->yellow->page->getRequest($field['name']) : "";
                     $output .= "      <input type=\"checkbox\" name=\"{$field['name']}\" id=\"{$field['name']}\" class=\"form-control switch\" $req value=\"ON\"";
                     // Add autocomplete
                     if ($field['autocomplete']) {
                         $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     }
                     // Set checked state
-                    if (isset($field['options'][0]['checked'])) {
+                    if (isset($field['options'][0]['checked']) && ($prefillValues !== true)) {
+                        $output .= " checked";
+                    } 
+                    elseif ($prefillValues === true && $value === "ON") {
                         $output .= " checked";
                     }
                     $output .= ">\n";
@@ -443,7 +494,8 @@ class YellowMdform {
                     break;
                 // Render date input
                 case 'date':
-                    $output .= "      <input type=\"date\" name=\"{$field['name']}\" class=\"form-control\"";
+                    $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
+                    $output .= "      <input type=\"date\" name=\"{$field['name']}\" value=\"$value\" class=\"form-control\"";
                     // Add min date limit
                     if (isset($field['min']) && $field['min'] !== null) {
                         $output .= " min=\"" . htmlspecialchars($field['min']) . "\"";
@@ -461,7 +513,8 @@ class YellowMdform {
                     break;
                 // Render number input
                 case 'number':
-                    $output .= "      <input type=\"number\" name=\"{$field['name']}\" class=\"form-control\"";
+                    $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
+                    $output .= "      <input type=\"number\" name=\"{$field['name']}\" value=\"$value\" class=\"form-control\"";
                     // Add placeholder
                     if (!empty($field['placeholder'])) {
                         $output .= " placeholder=\"" . htmlspecialchars($field['placeholder']) . "\"";
@@ -487,16 +540,18 @@ class YellowMdform {
                     break;
                 // Render textarea
                 case 'textarea':
+                    $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
                     $output .= "      <textarea name=\"{$field['name']}\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
                     // Add autocomplete
                     if ($field['autocomplete']) {
                         $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     }
-                    $output .= " rows=\"{$field['min']}\"></textarea>\n";
+                    $output .= " rows=\"{$field['min']}\">$value</textarea>\n";
                     break;
                 // Render standard text inputs
                 case 'text':
-                    $output .= "      <label><input type=\"$htmlType\" name=\"{$field['name']}\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
+                    $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
+                    $output .= "      <label><input type=\"$htmlType\" name=\"{$field['name']}\" value=\"$value\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
                     // Add autocomplete
                     if ($field['autocomplete']) {
                         $output .= " autocomplete=\"{$field['autocomplete']}\"";
@@ -507,10 +562,18 @@ class YellowMdform {
             $output .= "    </p>\n";
         }
 
+        // Create CAPTCHA block
+        if (stripos($formOoptions, "captcha") !== false) {
+            $captcha = $this->getRandomCaptchaString(); // Create an random captcha sting
+            $output .= "    <blockquote><p>" . $this->getCaptcha($captcha) . "<br /> > <input type=\"tel\" name=\"captcha\" placeholder=\"CAPTCHA\" pattern=\"[0-9]{6}\" size=\"6\" maxlength=\"6\"><br />";
+            $output .= $this->yellow->language->getText("MDFormCaptchaForm")  . "</p></blockquote>\n"; 
+            $output .= "    <input type=\"hidden\" name=\"captcha_hash\" value=\"".$this->createCaptchaHash($captcha)."\" />\n";
+        }
+
         $csrfToken = $this->createHashString($this->yellow->system->get("MDFormHashSaltPasskey"));
         $output .= "    <input type=\"hidden\" name=\"mdform-hash\" value=\"" . htmlspecialchars($csrfToken) . "\" />\n";
         $output .= "    <input type=\"hidden\" name=\"mdform-referer\" value=\"" . $this->yellow->toolbox->getServer("HTTP_REFERER") . "\" />\n";
-        $output .= "    <input type=\"hidden\" name=\"form-status\" value=\"send\" />\n";        
+        $output .= "    <input type=\"hidden\" name=\"mdform-status\" value=\"send\" />\n";        
         $output .= "    <p><button type=\"submit\" class=\"btn\">" . $this->yellow->language->getText("MDFormSubmitBtn") . "</button> </p>\n  </form>\n</div>\n";
 
         return $output;
@@ -530,8 +593,8 @@ class YellowMdform {
         return $output;       
     }    
     
-    // Extracts ONLY data-holding fields for backend processing
-    private function getFormMetadata($fileContent) {
+    // Extracts ONLY data-holding fields from MDF file for backend processing
+    private function getFormFileMetadata($fileContent) {
         $formData = $this->readMarkdown($fileContent);
         $formStructure = [];
         
@@ -542,7 +605,8 @@ class YellowMdform {
                 $formStructure[$field['name']] = [
                     'name' => $field['name'], 
                     'required' => $field['required'],
-                    'type' => $field['type']
+                    'type' => $field['type'],
+                    'autocomplete' => $field['autocomplete']
                 ];
             }
         }
@@ -551,26 +615,28 @@ class YellowMdform {
     }
 
     // Handles form submission security and dispatch logic
-    private function processSend($filePath, $fileName, $dispatchFormat, $hash) {
-        $output = "<div class=\"mdform-container\">\n ";
-        $output .= "<p>" . $this->yellow->language->getText("MDFormSubmitted") . "</p>\n ";
+    private function processSend($filePath, $fileName, $dispatchFormat, $formOptions) {
         
-        $receivedHash = $this->yellow->page->getRequest("mdform-hash");
- 
         // Validate CSRF token before processing
+        $receivedHash = $this->yellow->page->getRequest("mdform-hash");
         if (!$this->checkHashString($receivedHash, $this->yellow->system->get("MDFormHashSaltPasskey"))) {
-            return "<p>" . $this->yellow->language->getText("MDFormErrorTokenInvalid") . "</p>\n " . $this->getForm($filePath, $fileName);
+            return "<p>" . $this->yellow->language->getText("MDFormErrorTokenInvalid") . "</p>\n " . $this->getFormHTML($filePath, $fileName, $formOptions, false);
         }
 
         // Verify if IP is being rate limited
         if ($this->isRateLimited()) {
-            return "<p>" . $this->yellow->language->getText("MDFormWarningRateLimit") . "</p>\n " . $this->getForm($filePath, $fileName);
+            return "<p>" . $this->yellow->language->getText("MDFormWarningRateLimit") . "</p>\n " . $this->getFormHTML($filePath, $fileName, $formOptions, true);
         }
-
+        
+        // Validate Create CAPTCHA 
+        if (!$this->checkCaptcha(trim($this->yellow->page->getRequest("captcha")), trim($this->yellow->page->getRequest("captcha_hash")))) {
+            return "<p>" . $this->yellow->language->getText("MDFormCaptchaInvalid") . "</p>\n " . $this->getFormHTML($filePath, $fileName, $formOptions, true);
+        }
+        
         if ($this->yellow->system->get("MDFormResubmitCookie"))  {
             // Validate resubmit with token
             if ($this->yellow->toolbox->getCookie($receivedHash) === "yellowmdformhash") {
-                return "<p>" . $this->yellow->language->getText("MDFormWarningResubmit") . "</p>\n " . $this->getForm($filePath, $fileName);
+                return "<p>" . $this->yellow->language->getText("MDFormWarningResubmit") . "</p>\n " . $this->getFormHTML($filePath, $fileName, $formOptions, true);
             } else {
                 // Create a Cookie
                 $this->createCookie($receivedHash, "yellowmdformhash");
@@ -578,24 +644,28 @@ class YellowMdform {
                 #$this->destroyCookie($receivedHash);
             } 
         }
+
+        $output = "<div class=\"mdform-container\">\n ";
+        $output .= "<p>" . $this->yellow->language->getText("MDFormSubmitted") . "</p>\n ";
         
         // Execute dispatch methods if defined
         if (!is_string_empty($dispatchFormat)) {
-            $formStructure = $this->getFormMetadata(file_get_contents($filePath . $fileName));
+            $formStructure = $this->getFormFileMetadata(file_get_contents($filePath . $fileName));
+            #var_dump($formStructure); // Just for data structure debugging purpose
             $dispatchCommands = preg_split('/[\s,]+/', $dispatchFormat, -1, PREG_SPLIT_NO_EMPTY);
 
             // Execute each dispatch method in order
             foreach ($dispatchCommands as $cmd) {
                 // Handle HTML display dispatch
-                if ($cmd === "html") {
+                if (strtolower($cmd) === "html") {
                     $output .= $this->subDispatchHtml($formStructure);
                 } 
                 // Handle CSV export dispatch
-                elseif ($cmd === "csv") {
+                elseif (strtolower($cmd) === "csv") {
                     $output .= $this->subDispatchCsv($formStructure, $fileName);
                 } 
                 // Handle Email notification dispatch
-                elseif ($cmd === "email") {
+                elseif (strtolower($cmd) === "email") {
                     $output .= $this->subDispatchEmail($formStructure);
                 }
             }
@@ -637,10 +707,10 @@ class YellowMdform {
         $limitDir = $this->yellow->system->get("MDFormRateLimitDirectory");
         $ip = $this->yellow->toolbox->getServer("REMOTE_ADDR");
         $userAgent = $this->yellow->toolbox->getServer("HTTP_USER_AGENT") ?? '';
-        $sessionId = session_id() ?: 'no-session';
+
         
         // Create unique visitor fingerprint
-        $fingerprint = hash("sha256", $ip . '|' . $userAgent . '|' . $sessionId);
+        $fingerprint = hash("sha256", $ip . '|' . $userAgent);
         $fingerprintLimitFile = $limitDir . "fp_" . $fingerprint;
         $ipLimitFile = $limitDir . "ip_" . hash("sha256", $ip);
     
@@ -715,12 +785,14 @@ class YellowMdform {
     
     // Dispatch: Formats submitted data as HTML
     private function subDispatchHtml($formStructure) {
-        $output = ""; 
+        $output = "<p>" . $this->yellow->language->getText("MDFormHTMLOutput") . "</p>\n "; 
         // Iterate through submission headers
         foreach (array_keys($formStructure) as $header) {
             $val = $this->yellow->page->getRequest($header);
             $displayVal = is_array($val) ? implode(', ', $val) : $val;
-            $output .= htmlspecialchars($header) . " => " . htmlspecialchars(trim($displayVal)) . "<br>\n";
+            $displayVal = nl2br(htmlspecialchars(trim($displayVal)));
+            $displayVal = str_replace("<br />", "<br />\n|\t", $displayVal);
+            $output .= htmlspecialchars($header) . htmlspecialchars($this->yellow->system->get("MDFormKeyValueSeperator")) . $displayVal . "<br />\n";
         }
         return $output;
     }
@@ -793,23 +865,19 @@ class YellowMdform {
         foreach (array_keys($formStructure) as $header) {
             $val = $this->yellow->page->getRequest($header);
             $displayVal = is_array($val) ? implode(', ', $val) : $val;
-            $message .= htmlspecialchars($header) . " => " . htmlspecialchars(trim($displayVal)) . "\r\n";
+            $message .= htmlspecialchars($header) . $this->yellow->system->get("MDFormKeyValueSeperator") . htmlspecialchars(trim($displayVal)) . "\r\n";
         }
         
         $referer = trim($this->yellow->page->getRequest("mdform-referer"));
         $sitename = $this->yellow->system->get("sitename");
-        $siteEmail = $this->yellow->system->get("MDFormEmail");
+        $siteEmail = $this->yellow->system->get("from");
         $subject = $this->yellow->page->get("title") . " - " . $sitename;
         
+        // Get mail senders detail
         $userName = $this->yellow->system->get("author");
         $userEmail = $this->yellow->system->get("email");
-        
-        $headerText = $this->yellow->language->getText("MDFormMailHeader");
-        $headerText = str_replace("\\n", "\r\n", $headerText);
-        $footerText = $this->yellow->language->getText("MDFormMailFooter");
-        $footerText = str_replace("\\n", "\r\n", $footerText);
-        
-        // Apply page-specific email overrides if allowed
+
+        // Apply page-specific author overrides if allowed
         if ($this->yellow->page->isExisting("author") && !$this->yellow->system->get("MDFormEmailRestriction")) {
             $userName = $this->yellow->page->get("author");
         }
@@ -817,15 +885,38 @@ class YellowMdform {
         if ($this->yellow->page->isExisting("email") && !$this->yellow->system->get("MDFormEmailRestriction")) {
             $userEmail = $this->yellow->page->get("email");
         }
-        // Apply page-specific email overrides if allowed
+        
+        // Get form senders contact from autocomplete fields
+        $senderName = trim(preg_replace("/[^\pL\d\-\. ]/u", "-", $this-> getSenderName($formStructure)));
+        $senderEmail = trim($this-> getSenderEmail($formStructure));        
+        
+        // Get mail text header and footer
+        $headerText = $this->yellow->language->getText("MDFormMailHeader");
+        $footerText = $this->yellow->language->getText("MDFormMailFooter");
+        
+        // Apply page-specific header overrides if allowed
         if ($this->yellow->page->isExisting("MDFormMailHeader") && !$this->yellow->system->get("MDFormEmailRestriction")) {
             $headerText = $this->yellow->page->get("MDFormMailHeader");
         }
-        // Apply page-specific email overrides if allowed
+        // Apply page-specific footer overrides if allowed
         if ($this->yellow->page->isExisting("MDFormMailFooter") && !$this->yellow->system->get("MDFormEmailRestriction")) {
             $footerText = $this->yellow->page->get("MDFormMailFooter");
         }
+     
+        $headerText = str_replace("\\n", "\r\n", $headerText);
+        $headerText = preg_replace("/@sendershort/i", strtok($senderName, " "), $headerText);
+        $headerText = preg_replace("/@sender/i", "$senderName <$senderEmail>", $headerText);
+
+        $footerText = str_replace("\\n ", "\n", $footerText);
+        $footerText = str_replace("\\n", "\r\n", $footerText);
+        $footerText = preg_replace("/@sitename/i", $this->yellow->system->get("sitename"), $footerText);
+        $footerText = preg_replace("/@sitemail/i", $this->yellow->system->get("from"), $footerText);
+        $footerText = preg_replace("/@usermail/i", $this->yellow->system->get("email"), $footerText);
+        $footerText = preg_replace("/@author/i", $this->yellow->page->get("author"), $footerText);
+        $footerText = preg_replace("/@title/i", $this->yellow->page->get("title"), $footerText);
+
         
+        // Sanitize Inputs
         $userName = $this->sanitizeEmailName($userName);
         $userEmail = $this->sanitizeEmailAddress($userEmail);
         $sitename = $this->sanitizeEmailName($sitename);
@@ -849,8 +940,12 @@ class YellowMdform {
             "X-Referer-Url" => $referer,
             "X-Request-Url" => $this->yellow->page->getUrl()
         );
+        // Conditionally add Reply-To header
+        if (!empty($senderEmail)) {
+            $mailHeaders["Reply-To"] = $this->yellow->lookup->normaliseAddress("$senderName <$senderEmail>");
+        }
+        $mailMessage = "$headerText\r\n\r\n$message\r\n--\r\n$footerText";
         
-        $mailMessage = "$headerText\r\n\r\n$message\r\n\r\n$footerText";
         // Execute system mail function
         $output = $this->yellow->toolbox->mail("MDForm", $mailHeaders, $mailMessage) 
             ? ("<p>" . $this->yellow->language->getText("MDFormEmailSent") . "</p>\n")
@@ -878,4 +973,97 @@ class YellowMdform {
         $subject = trim($subject);
         return mb_substr($subject, 0, 255, 'UTF-8');
     }
+    
+    // Find input name by the first input filed defined as [ ]{name}
+     private function getSenderName($formStructure) {
+        foreach ($formStructure as $field) {
+            // Check if autocomplete is correspding "name"
+            if ($field['autocomplete'] === "name") {
+                return htmlspecialchars($this->yellow->page->getRequest($field['name']));
+            }
+        }
+    }
+    
+    // Find input name by the first input filed defined as [ ]{email}
+     private function getSenderEmail($formStructure) {
+        foreach ($formStructure as $field) {
+            // Check if autocomplete is correspding "email"
+            if ($field['autocomplete'] === "email") {
+                return htmlspecialchars($this->yellow->page->getRequest($field['name']));
+            }
+        }
+    }
+
+    // Check if text contains clickable links
+    public function checkClickable($text) {
+        $found = false;
+        foreach (preg_split("/\s+/", $text) as $token) {
+            if (preg_match("/([\w\-\.]{2,}\.[\w]{2,})/", $token)) $found = true;
+            if (preg_match("/^\w+:\/\//", $token)) $found = true;
+        }
+        return $found;
+    }
+
+    // Create captcha string
+    public function getRandomCaptchaString($length = 6) {
+        $stringSpace = '0123456789';
+        $stringLength = strlen($stringSpace);
+        $randomString = '';
+        for ($i = 0; $i < $length; $i ++) {
+            $randomString = $randomString . $stringSpace[rand(0, $stringLength - 1)];
+        }
+        return $randomString;
+    }
+
+    // Create captcha hash
+    public function createCaptchaHash($string) {
+        $hash = $this->yellow->toolbox->createHash($string, "sha256");
+        if (is_string_empty($hash)) $hash = "padd"."error-hash-algorithm-sha256";
+        return $hash;
+    }
+       
+    // Create captcha image
+    public function getCaptcha($string) {
+
+        // Begin output buffering
+        ob_start();
+
+        // generate the captcha image in some magic way
+        $w = 80; $h = 30;
+        $image = imagecreate($w, $h);
+        $background = imagecolorallocatealpha($image, 127, 127, 127, 63);
+        imagefill($image, 0, 0, $background);
+
+        $color[0] = imagecolorallocate($image, 0, 0, 0);    
+        $color[1] = imagecolorallocate($image, 255, 255, 255);
+
+        $strlen = strlen($string);
+        for( $i = 0; $i < $strlen; $i++ ) {
+            $char = substr( $string, $i, 1 );
+            $s = rand(0, 9);
+            $x = $i * 10;
+            $y = rand(0, 9);
+            $c = rand(0, 1);
+
+            imagechar($image, 4, $x + 12, $y + 3, $char, $color[$c]);
+            if ($y <= 3) imagechar($image, 4, $x + 12, $y + 6, "_", $color[(1-$c)]);
+            if ($y >= 6) imagechar($image, 4, $x + 12, $y - 12, "_", $color[(1-$c)]);
+        }  
+        imagepng($image);
+
+        // and finally retrieve the byte stream
+        $rawImageBytes = ob_get_clean();
+
+        imageDestroy($image);
+
+        return '<img src="data:image/png;base64,'. base64_encode( $rawImageBytes ) . '">';
+
+    }
+
+    // Check captcha
+    public function checkCaptcha($string, $hash) {
+        return $this->yellow->toolbox->verifyHash($string, "sha256", $hash);
+    }
+
+
 }
