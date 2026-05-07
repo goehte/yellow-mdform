@@ -129,10 +129,9 @@ For those who are new to the community, here are some tips and tricks for using 
 https://github.com/datenstrom/community/discussions/760
 
 
+# Sequence Diagram for mdform.php v0.0.9
+
 ```mermaid
----
-title: mdform.php v0.0.9
----
 sequenceDiagram
     autonumber
     participant Browser as Browser
