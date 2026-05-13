@@ -2,12 +2,10 @@
 This MDF Test File contains all supported HTML input types.
 
 ## Markdown Text (Non-Input):
-This is a example *description* text for the **form**.
-
-## Text Inputs:
-Name: [Enter your name]
-[Your suggestions]
-[ ]
+**Note:** *Only single line markdown is possible.*
+> e.g. single line blockquotes
+or image:
+![Image Alt text](photo.jpg)
 
 ## Special Inputs :
 Email: [your@email.com]{email}
@@ -48,7 +46,7 @@ Number of participants: [Please select ▼; 1 Person, 2 People, 3 People]
 Favorite Fruit: [Please select ▼; Apple, Peach, Cherry]*
 
 ## Radio Buttons:
-Gender: [( ) Male, ( ) Female, ( ) Other]*
+Gender: [( ) Male, ( ) Female, (x) Other]*
 
 ## Checkboxes:
 Interests: [[x] Sports, [ ] Music, [x] Reading]
@@ -60,6 +58,26 @@ Subscribe to newsletter: [Apply: ON/OFF]
 [ON/OFF]
 Preset Toggle: [de-active if needed: OFF/ON]
 ---
+## Hidden Fields:
+Session ID: [~session_id: abc123xyz]
+Form Version: [~version: 1.0]
+Security Token: [~token: secret_token_value]
+---
+## Live Output:
+**Live Output Input:**  
+Text 1: [Enter text]
+Number 1: [0]
+
+**Live Output Display:**  
+Text: {output:Text 1}
+{output:Number 1}
+Display a hidden value (version): {output:version}
+---
+## Send copy to me:
+Get a copy: [Send a copy of this form to me: OFF/ON]{_cc_email}
+
+## Validate Data:
+Validate data inputs: [Confirm data input per mail: ON/OFF]{_validate_email}
+---
 **Note:** All fields marked with * are required.
-
-
+---
