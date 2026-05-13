@@ -9,6 +9,9 @@
 // Alpha Revision v0.0.8.2 - Date 01.05.2026 - Mail Header on Page YAML added
 // Alpha Revision v0.0.8.3 - Date 05.05.2026 - E-Mail sending updated
 // Alpha Revision v0.0.9.1 - Date 06.05.2026 - Image CAPTCHA added, pre-fill HTML during resubmit added
+// Alpha Revision v0.0.9.2 - Date 06.05.2026 - Hidden fields added, output added
+// Alpha Revision v0.0.9.3 - Date 13.05.2026 - Special function {_cc_email} added
+// Alpha Revision v0.0.9.4 - Date 13.05.2026 - Special function {validate_email} added
 
 class YellowMdform {
     // Extension version number
@@ -38,20 +41,28 @@ class YellowMdform {
         $this->yellow->system->setDefault("MDFormResubmitCookie", "0");
         $this->yellow->system->setDefault("MDFormAllowedExtensions", "mdf, md, form");  
         $this->yellow->system->setDefault("MDFormStyleSheet", "mdform.css");
-        $this->yellow->system->setDefault("MDFormKeyValueSeperator", ": \t");
+        $this->yellow->system->setDefault("MDFormJavaScript", "mdform.js");
+        $this->yellow->system->setDefault("MDFormActivateJavaScript", "1"); // JS needed only needed for live output: {output:name}.
+        $this->yellow->system->setDefault("MDFormKeyValueSeperator", ": "); // How the key name and the value get shown in HTML and Email output.
         
         // Language translations for UI messages
         $this->yellow->language->setDefaults(array(
             "Language: en",
             "MDFormSubmitBtn: Submit",
             "MDFormMandatory: *",
-            "MDFormSubmitted: <strong>Form successfully submitted</strong>",
+            "MDFormSubmitted: <strong>  &#9989; Form successfully submitted.</strong>",
             "MDFormHTMLOutput: You have provided the following data:",
             "MDFormCSVSaved: Success! Data saved.",
             "MDFormEmailSend: Success! Data send.",
+            "MDFormEmailCopySend: Copy of this from data send to: @sendermail.",
+            "MDFormEmailValidateSend: Please validate your data, check your mailbox @sendermail and click the validation link.",
+            "MDFormValidateSuccess: <strong>  &#9989; Success! Data validated.</strong>",
+            "MDFormValidateError: <div class=\"important\">Unable to validate data.</div>",       
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
+            "MDFormMailValidateText: Please click the Link below to validate your data:",
             "MDFormNotifySendCopy: Please email me a copy of this form.",
+            "MDFormCaptchaFormTitle: <strong>Security query:</strong>",
             "MDFormCaptchaForm: Please enter the numerical CAPTCHA from the picture in the form field.",
             "MDFormCaptchaInvalid: <div class=\"important\">The entered CAPTCHA have been incorrect.</div>",            
             "MDFormWarningRateLimit: <div class=\"important\">Warning: Please wait a moment before submitting again.</div>",
@@ -65,13 +76,19 @@ class YellowMdform {
             "Language: de",
             "MDFormSubmitBtn: Senden",
             "MDFormMandatory: *",
-            "MDFormSubmitted: <strong>Formular erfolgreich abgesendet.</strong>",
+            "MDFormSubmitted: <strong> &#9989; Formular erfolgreich abgesendet.</strong>",
             "MDFormHTMLOutput: Sie haben die folgenden Daten übermittelt:",
             "MDFormCSVSaved: Daten erfolgreich gespeichert.",
             "MDFormEmailSent: Daten erfolgreich gesendet.",
+            "MDFormEmailCopySend: Eine Kopie der Formulardaten wurde gesendet an: @sendermail.",
+            "MDFormEmailValidateSend: Bitte validieren Sie die Daten, prüfen Sie Ihre Mailbox @sendermail und klicken Sie den Validierungslink.",
+            "MDFormValidateSuccess: <strong>  &#9989; Sie haben die Daten erfolgreich validiert.</strong>",
+            "MDFormValidateError: <div class=\"important\">Es war nicht möglich die Daten zu validieren.</div>",   
             "MDFormMailHeader: Mail Header",
             "MDFormMailFooter: Mail Footer",
+            "MDFormMailValidateText: Bitte klicken Sie den Link unten um die Daten zu validieren:",
             "MDFormNotifySendCopy: Bitte senden Sie mir eine Kopie dieses Formulars per E-Mail.",
+            "MDFormCaptchaFormTitle: <strong>Sicherheitsabfrage:</strong>",
             "MDFormCaptchaForm: <small>Bitte geben sie das numerische CAPTCHA von dem Bild in das Formularfeld ein.</small>",
             "MDFormCaptchaInvalid: <div class=\"important\">Das eingegebene CAPTCHA ist nicht korrekt.</div>",         
             "MDFormWarningRateLimit: <div class=\"important\">Warnung: Bitte warten Sie einen Moment, bevor Sie das Formular erneut absenden.</div>",
@@ -83,6 +100,7 @@ class YellowMdform {
             "MDFormErrorEmailSetting: <div class=\"important\">[mdform] Fehler: E-Mail-Einstellungen sind ungültig.</div>",
             "MDFormErrorEmailService: <div class=\"important\">[mdform] Fehler: E-Mail konnte nicht gesendet werden.</div>",
         ));
+        
     }
 
     // Page YAML Options
@@ -122,9 +140,10 @@ class YellowMdform {
                         $output .= $this->processSend($filePath, $fileName, $dispatchFormat, $formOptions); 
                     }
                     // Validate Form
-                    elseif ($page->getRequest("mdform-status") === "validate") {
-                    #elseif (($page->getRequest("mdform-status") === "validate") && ($this->checkHashString($page->getRequest("mdform-file"), $fileName))) {
-                        $output .= "Validate: " . $fileName;
+                    #elseif ($page->getRequest("mdform-status") === "validate") {
+                    elseif (($page->getRequest("mdform-status") === "validate") && ($this->checkHashString(urldecode($page->getRequest("mdform-file")), $fileName))) {
+                        #echo "Validate: " . urldecode($page->getRequest("mdform-file")) . " - ". $this->checkHashString(urldecode($page->getRequest("mdform-file")), $fileName);
+                        $output = $this->processValidateCSV($fileName, urldecode($page->getRequest("mdform-hash")));
                     }
                     // Render the form for standard display
                     else {
@@ -146,10 +165,17 @@ class YellowMdform {
         // Check if header extra is being parsed
         if ($name == "header") {
             $assetLocation = $this->yellow->system->get("coreServerBase") . $this->yellow->system->get("coreAssetLocation");
+            // CSS
             $style = $this->yellow->system->get("MDFormStyleSheet");
             // Append link tag if stylesheet is defined
             if ($style != "") {
                 $output .= "<link rel=\"stylesheet\" type=\"text/css\" media=\"all\" href=\"{$assetLocation}{$style}\" />\n";
+            }
+            // JS
+            $jsFile = $this->yellow->system->get("MDFormJavaScript");         
+            // Add JavaScript libary
+            if (($jsFile != "") && ($this->yellow->system->get("MDFormActivateJavaScript"))) {
+                 $output .= "<script src=\"{$assetLocation}{$jsFile}\" defer></script>\n";
             }
         }
         return $output;
@@ -175,7 +201,7 @@ class YellowMdform {
         $formData = [];
         $counters = ['radio' => 0, 'check' => 0, 'toggle' => 0, 'input' => 0];
 
-        // Process markdown line by line
+        // Process form markdown line by line
         foreach ($lines as $line) {
             $line = trim($line);
             // Skip empty lines
@@ -183,9 +209,8 @@ class YellowMdform {
                 continue;
             }
 
-            $isMandatory = false;
+            $isMandatory = false; 
             $cleanLine = $line;
-
             // Only strip trailing '*' if line contains form brackets
             if (strpos($line, '[') !== false && strpos($line, ']') !== false) {
                 // Check if last character is mandatory marker
@@ -197,15 +222,37 @@ class YellowMdform {
 
             $labelPrefix = ""; 
             $elementBody = $cleanLine;
-            
+
+            // Output references: Label 1: {output:Name}      
+            if (preg_match('/^(?:(.+?):\s*)?\{output:(.+)\}$/', $cleanLine, $outputMatches)) {
+                // If the label part matched, it's in index 1. Otherwise, it's an empty string.
+                $labelPrefix = !empty($outputMatches[1]) ? trim($outputMatches[1]) : '';
+                $outputName = trim($outputMatches[2]); 
+                
+                $entry['type'] = 'output';
+                $entry['label'] = $labelPrefix;
+                $entry['for'] = $this->sanitizeFromName($outputName);
+                $entry['name'] = 'output_' . $entry['for'];
+                
+                $formData[] = $entry;
+                continue;
+            }
+
             // Extract label and body for form fields
             if (preg_match('/^(.+?):\s*(\[.*\].*)$/', $cleanLine, $matches)) {
                 $labelPrefix = trim($matches[1]);
                 $elementBody = trim($matches[2]);
             }
 
-            $entry = ['label' => $labelPrefix, 'required' => $isMandatory, 'name' => '', 'type' => '', 'options' => [], 'placeholder' => '', 'autocomplete' => '', 'min' => '', 'max' => ''];
+            #$entry = ['label' => $labelPrefix, 'required' => $isMandatory, 'name' => '', 'type' => '', 'options' => [], 'placeholder' => '', 'autocomplete' => '', 'min' => '', 'max' => ''];
+            $entry = ['label' => $labelPrefix, 'required' => $isMandatory, 'name' => '', 'type' => '', 'options' => [], 'placeholder' => '', 'autocomplete' => ''];
 
+            // Extract special attributes if present
+            if (preg_match('/^(.*)\{(\_[a-z0-9\-\_]+)\}\s*$/i', $elementBody, $attrMatches)) {
+                $elementBody = trim($attrMatches[1]);
+                $entry['special'] = strtolower(trim($attrMatches[2]));
+            }
+            
             // Extract autocomplete attributes if present
             if (preg_match('/^(.*)\{([a-z0-9\-]+)\}\s*$/i', $elementBody, $attrMatches)) {
                 $elementBody = trim($attrMatches[1]);
@@ -215,14 +262,14 @@ class YellowMdform {
             // Select dropdown elements
             if (preg_match('/^\[(.*?)\s*▼\s*;\s*(.*)\]$/u', $elementBody, $matches)) {
                 $entry['type'] = 'select';
-                $entry['name'] = $this->cleanName($labelPrefix ?: "dropdown_" . (++$counters['input']));
+                $entry['name'] = $this->sanitizeFromName($labelPrefix ?: "dropdown_" . (++$counters['input']));
                 $entry['placeholder'] = trim($matches[1]);
                 $entry['options'] = array_map('trim', explode(',', $matches[2]));
             } 
             // Radio button groups
             elseif (preg_match('/^\[(\(\s*[xX ]?\s*\).*?)\]$/', $elementBody, $matches)) {
                 $entry['type'] = 'radio';
-                $entry['name'] = $this->cleanName($labelPrefix ?: "radio_group_" . (++$counters['radio']));
+                $entry['name'] = $this->sanitizeFromName($labelPrefix ?: "radio_group_" . (++$counters['radio']));
                 $innerContent = $matches[1];
                 $parts = preg_split('/,\s*(?=\()/', $innerContent);
 
@@ -237,7 +284,7 @@ class YellowMdform {
             // Checkbox groups
             elseif (preg_match('/^\[(\[\s*[xX ]?\s*\].*?)\]$/', $elementBody, $matches)) {
                 $entry['type'] = 'checkbox';
-                $entry['name'] = $this->cleanName($labelPrefix ?: "check_group_" . (++$counters['check']));
+                $entry['name'] = $this->sanitizeFromName($labelPrefix ?: "check_group_" . (++$counters['check']));
                 $innerContent = $matches[1];
                 $parts = preg_split('/,\s*(?=\[)/', $innerContent);
 
@@ -253,19 +300,19 @@ class YellowMdform {
             elseif (preg_match('/^\[(?:(.*?):\s*)?ON\/OFF\]$/i', $elementBody, $matches)) {
                 $entry['type'] = 'toggle';
                 $toggleName = isset($matches[1]) ? trim($matches[1]) : "";
-                $entry['name'] = $this->cleanName($toggleName ?: $labelPrefix ?: "toggle_" . (++$counters['toggle']));
+                $entry['name'] = $this->sanitizeFromName($toggleName ?: $labelPrefix ?: "toggle_" . (++$counters['toggle']));
             }
             // Toggle inputs [OFF/ON]
             elseif (preg_match('/^\[(?:(.*?):\s*)?OFF\/ON\]$/i', $elementBody, $matches)) {
                 $entry['type'] = 'toggle';
                 $toggleName = isset($matches[1]) ? trim($matches[1]) : "";
-                $entry['name'] = $this->cleanName($toggleName ?: $labelPrefix ?: "toggle_" . (++$counters['toggle']));
+                $entry['name'] = $this->sanitizeFromName($toggleName ?: $labelPrefix ?: "toggle_" . (++$counters['toggle']));
                 $entry['options'][] = ['checked' => true];
             }
             // Date inputs
             elseif (preg_match('/^\[DD\/MM\/YYYY(?:;(\d{4}-\d{2}-\d{2}|TODAY)\.\.(\d{4}-\d{2}-\d{2}|TODAY))?\]$/', $elementBody, $dateMatches)) {
                 $entry['type'] = 'date';
-                $entry['name'] = $this->cleanName($labelPrefix ?: "date_" . (++$counters['input']));
+                $entry['name'] = $this->sanitizeFromName($labelPrefix ?: "date_" . (++$counters['input']));
                 $dateMin = isset($dateMatches[1]) ? $dateMatches[1] : null;
                 $dateMax = isset($dateMatches[2]) ? $dateMatches[2] : null;
                 
@@ -290,7 +337,7 @@ class YellowMdform {
                     $dotsCount = strlen($rawContent) - strlen(rtrim($rawContent, '.'));
                     $entry['type'] = 'textarea';
                     $entry['placeholder'] = trim($rawContent, '. ');
-                    $entry['name'] = $this->cleanName($labelPrefix ?: $entry['placeholder'] ?: "textarea_" . (++$counters['input']));
+                    $entry['name'] = $this->sanitizeFromName($labelPrefix ?: $entry['placeholder'] ?: "textarea_" . (++$counters['input']));
                     $entry['min'] = ($dotsCount >= 3) ? $dotsCount : 2;
                 }
                 // Number input: Check for digits, ranges, or floats
@@ -325,13 +372,20 @@ class YellowMdform {
                         }
                     }
                     $entry['step'] = $step;
-                    $entry['name'] = $this->cleanName($labelPrefix ?: "number_" . (++$counters['input']));
+                    $entry['name'] = $this->sanitizeFromName($labelPrefix ?: "number_" . (++$counters['input']));
+                }
+                // Hidden inputs: [~Name: Value]
+                elseif (preg_match('/^\[(~)(.+):\s*(.+)\]$/', $elementBody, $matches)) {
+                    $entry['type'] = 'hidden';
+                    $entry['name'] = $this->sanitizeFromName(trim($matches[2]));
+                    $entry['value'] = trim($matches[3]);
+                    $entry['required'] = false; // Hidden fields are never required
                 }
                 // Default to standard text field
                 else {
                     $entry['type'] = 'text';
                     $entry['placeholder'] = trim($rawContent, '. ');
-                    $entry['name'] = $this->cleanName($labelPrefix ?: $entry['placeholder'] ?: "text_" . (++$counters['input']));
+                    $entry['name'] = $this->sanitizeFromName($labelPrefix ?: $entry['placeholder'] ?: "text_" . (++$counters['input']));
                 }
             }
             // Handle standalone markdown text lines
@@ -350,16 +404,17 @@ class YellowMdform {
     }
 
     // Converts parsed form structure into HTML markup
-    private function generateHTMLForm($formData, $fileName, $formOoptions, $prefillValues) {
+    private function generateHTMLForm($formData, $fileName, $formOptions, $prefillValues) {
         $fileHash = $this->createHashString($fileName); 
         $autocompleteValue = strtolower($this->yellow->page->get("MDFormAutocomplete"));
-        
+
         $output = "<div class=\"mdform-container\">\n  <form id=\"" . htmlspecialchars($fileHash) . "\" method=\"post\"";
         // Allow to turn off autocomplete
         if (in_array($autocompleteValue, ['on', 'off'])) {
             $output .= " autocomplete=\"" . $autocompleteValue . "\"";
         }
         $output .= ">\n";
+
         $output .= "    <input type=\"hidden\" name=\"mdform-file\" value=\"" . htmlspecialchars($fileHash) . "\">\n";
 
         #var_dump($formData); // Just for data structure debugging purpose
@@ -403,10 +458,14 @@ class YellowMdform {
             // Generate field markup based on type
 
             switch ($field['type']) {
+                // Render output elements
+                case 'output':
+                    $output .= "      <output name=\"{$field['name']}\" id=\"{$field['name']}\" for=\"{$field['for']}\"></output>\n";
+                    break;
                 // Render select dropdowns
                 case 'select':
                     $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
-                    $output .= "      <select name=\"{$field['name']}\" class=\"form-control\" $req";
+                    $output .= "      <select name=\"{$field['name']}\" id=\"{$field['name']}\" class=\"form-control\" $req";
                     // Append autocomplete attribute
                     if ($field['autocomplete']) {
                         $output .= " autocomplete=\"{$field['autocomplete']}\"";
@@ -422,8 +481,6 @@ class YellowMdform {
                 // Render radio buttons
                 case 'radio':
                      $value = ($prefillValues === true) ? $this->yellow->page->getRequest($field['name']) : "";
-                     var_dump($value);
-                     echo "- radio <br>\n";
                     // Loop through radio options
                     foreach ($field['options'] as $option) {
                         $output .= "      <label><input type=\"radio\" name=\"{$field['name']}\" class=\"form-control\" value=\"{$option['value']}\" $req";
@@ -445,8 +502,6 @@ class YellowMdform {
                 // Render checkboxes
                 case 'checkbox':
                     $value = ($prefillValues === true) ? $this->yellow->page->getRequest($field['name']) : "";
-                     var_dump($value);
-                     echo "- check <br>\n";
                     // Loop through checkbox options
                     foreach ($field['options'] as $option) {
                         $output .= "      <label><input type=\"checkbox\" name=\"{$field['name']}[]\" class=\"form-control\" value=\"{$option['value']}\" $req";
@@ -495,7 +550,7 @@ class YellowMdform {
                 // Render date input
                 case 'date':
                     $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
-                    $output .= "      <input type=\"date\" name=\"{$field['name']}\" value=\"$value\" class=\"form-control\"";
+                    $output .= "      <input type=\"date\" name=\"{$field['name']}\" id=\"{$field['name']}\" value=\"$value\" class=\"form-control\"";
                     // Add min date limit
                     if (isset($field['min']) && $field['min'] !== null) {
                         $output .= " min=\"" . htmlspecialchars($field['min']) . "\"";
@@ -514,7 +569,7 @@ class YellowMdform {
                 // Render number input
                 case 'number':
                     $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
-                    $output .= "      <input type=\"number\" name=\"{$field['name']}\" value=\"$value\" class=\"form-control\"";
+                    $output .= "      <input type=\"number\" name=\"{$field['name']}\" id=\"{$field['name']}\" value=\"$value\" class=\"form-control\"";
                     // Add placeholder
                     if (!empty($field['placeholder'])) {
                         $output .= " placeholder=\"" . htmlspecialchars($field['placeholder']) . "\"";
@@ -541,7 +596,7 @@ class YellowMdform {
                 // Render textarea
                 case 'textarea':
                     $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
-                    $output .= "      <textarea name=\"{$field['name']}\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
+                    $output .= "      <textarea name=\"{$field['name']}\" id=\"{$field['name']}\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
                     // Add autocomplete
                     if ($field['autocomplete']) {
                         $output .= " autocomplete=\"{$field['autocomplete']}\"";
@@ -551,22 +606,27 @@ class YellowMdform {
                 // Render standard text inputs
                 case 'text':
                     $value = ($prefillValues === true) ? $this->yellow->page->getRequestHtml($field['name']) : "";
-                    $output .= "      <label><input type=\"$htmlType\" name=\"{$field['name']}\" value=\"$value\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
+                    $output .= "      <label><input type=\"$htmlType\" name=\"{$field['name']}\" id=\"{$field['name']}\" value=\"$value\" class=\"form-control\" placeholder=\"{$field['placeholder']}\" $req style=\"width:100%\"";
                     // Add autocomplete
                     if ($field['autocomplete']) {
                         $output .= " autocomplete=\"{$field['autocomplete']}\"";
                     }
                     $output .= "></label>\n";
                     break;
+                // Render hidden inputs
+                case 'hidden':
+                    $value = isset($field['value']) ? htmlspecialchars($field['value']) : '';
+                    $output .= "      <input type=\"hidden\" name=\"{$field['name']}\" id=\"{$field['name']}\" value=\"$value\">\n";
+                    break;
             }
             $output .= "    </p>\n";
         }
 
         // Create CAPTCHA block
-        if (stripos($formOoptions, "captcha") !== false) {
+        if (stripos($formOptions, "captcha") !== false) {
             $captcha = $this->getRandomCaptchaString(); // Create an random captcha sting
-            $output .= "    <blockquote><p>" . $this->getCaptcha($captcha) . "<br /> > <input type=\"tel\" name=\"captcha\" placeholder=\"CAPTCHA\" pattern=\"[0-9]{6}\" size=\"6\" maxlength=\"6\"><br />";
-            $output .= $this->yellow->language->getText("MDFormCaptchaForm")  . "</p></blockquote>\n"; 
+            $output .= "    <blockquote><p>" . $this->yellow->language->getText("MDFormCaptchaFormTitle") . "<br />" . $this->getCaptcha($captcha) . "<br />&rdsh;<input type=\"number\" name=\"captcha\" placeholder=\"CAPTCHA\" pattern=\"[0-9]{6}\" size=\"6\" step=\"1\"  min=\"0\"  max=\"999999\" maxlength=\"6\"><br />";
+            $output .= $this->yellow->language->getText("MDFormCaptchaForm")  . "</p>\n</blockquote>\n"; 
             $output .= "    <input type=\"hidden\" name=\"captcha_hash\" value=\"".$this->createCaptchaHash($captcha)."\" />\n";
         }
 
@@ -602,14 +662,22 @@ class YellowMdform {
         foreach ($formData as $field) {
             // SKIP display-only markdown elements
             if (!($field['type'] === 'markdown')) {
-                $formStructure[$field['name']] = [
-                    'name' => $field['name'], 
-                    'required' => $field['required'],
-                    'type' => $field['type'],
-                    'autocomplete' => $field['autocomplete']
+                // Define the base structure
+                $structure = [
+                    'name'         => $field['name'], 
+                    'required'     => $field['required'],
+                    'type'         => $field['type'],
+                    'autocomplete' => $field['autocomplete'],
                 ];
+
+                // Only add 'special' if it exists and is not null
+                if (isset($field['special'])) {
+                    $structure['special'] = $field['special'];
+                }
+                $formStructure[$field['name']] = $structure;
             }
         }
+
         #var_dump($formStructure); // Just for data structure debugging purpose
         return $formStructure;
     }
@@ -629,8 +697,10 @@ class YellowMdform {
         }
         
         // Validate Create CAPTCHA 
-        if (!$this->checkCaptcha(trim($this->yellow->page->getRequest("captcha")), trim($this->yellow->page->getRequest("captcha_hash")))) {
-            return "<p>" . $this->yellow->language->getText("MDFormCaptchaInvalid") . "</p>\n " . $this->getFormHTML($filePath, $fileName, $formOptions, true);
+        if (stripos($formOptions, "captcha") !== false) {
+            if (!$this->checkCaptcha(trim($this->yellow->page->getRequest("captcha")), trim($this->yellow->page->getRequest("captcha_hash")))) {
+                return "<p>" . $this->yellow->language->getText("MDFormCaptchaInvalid") . "</p>\n " . $this->getFormHTML($filePath, $fileName, $formOptions, true);
+            }
         }
         
         if ($this->yellow->system->get("MDFormResubmitCookie"))  {
@@ -675,7 +745,7 @@ class YellowMdform {
     }
 
     // Cleans field names by replacing special characters with underscores
-    private function cleanName($name) {
+    private function sanitizeFromName($name) {
         return str_replace([' ', '.', '[', ']', ':', '*'], '_', trim($name));
     }
 
@@ -785,15 +855,17 @@ class YellowMdform {
     
     // Dispatch: Formats submitted data as HTML
     private function subDispatchHtml($formStructure) {
-        $output = "<p>" . $this->yellow->language->getText("MDFormHTMLOutput") . "</p>\n "; 
+        $output = "<p>" . $this->yellow->language->getText("MDFormHTMLOutput") . "</p>\n"; 
+        $output .= "<table> \n"; 
         // Iterate through submission headers
         foreach (array_keys($formStructure) as $header) {
             $val = $this->yellow->page->getRequest($header);
             $displayVal = is_array($val) ? implode(', ', $val) : $val;
-            $displayVal = nl2br(htmlspecialchars(trim($displayVal)));
-            $displayVal = str_replace("<br />", "<br />\n|\t", $displayVal);
-            $output .= htmlspecialchars($header) . htmlspecialchars($this->yellow->system->get("MDFormKeyValueSeperator")) . $displayVal . "<br />\n";
+            $displayVal = ($formStructure[$header]['type'] === 'toggle' && empty($displayVal)) ? "OFF": $displayVal; // Toggle: Show OFF value if not ON value
+            $displayVal = htmlspecialchars(trim($displayVal));
+            $output .= "<tr><td>" . htmlspecialchars($header) . $this->yellow->system->get("MDFormKeyValueSeperator") . "</td><td><strong>" . $displayVal . "</strong></tr>\n";
         }
+        $output .= "</table> \n"; 
         return $output;
     }
 
@@ -805,7 +877,7 @@ class YellowMdform {
         $escape = "\\";
         
         $csvPath = $this->yellow->system->get("MDFormDirectoryCSVOutput") . $fileName . ".csv"; 
-        $expectedHeaders = array_merge(["mdform-timestamp"], ["mdform-hash"], array_keys($formStructure));  // Store also the mdform-hash within the CSV data
+        $expectedHeaders = array_merge(["mdform-timestamp"], ["mdform-hash"], ["mdform-validated"], array_keys($formStructure));  // Store also the mdform-hash within the CSV data
         $csvDir = dirname($csvPath);
         // Ensure CSV directory exists
         if (!is_dir($csvDir)) {
@@ -827,7 +899,16 @@ class YellowMdform {
         $dataRow = [];
         // Map submitted values to expected headers
         foreach ($expectedHeaders as $header) {
-            $val = ($header === "mdform-timestamp") ? date("Y-m-d H:i:s") : $this->yellow->page->getRequest($header);
+            // Filing 
+            if ($header === "mdform-timestamp") {
+                $val = date("Y-m-d H:i:s");
+            } 
+            elseif ($header === "mdform-validated") {
+                $val = "0";
+            } 
+            else {
+                $val =  $this->yellow->page->getRequest($header);
+            }
             // Join array values with semicolons
             if (is_array($val)) {
                 $val = implode("; ", $val); 
@@ -856,16 +937,94 @@ class YellowMdform {
         return $output;
     }
 
+    // Validates a previously submitted form entry in the CSV
+    private function processValidateCSV($fileName, $formHash) {
+        $output = ""; 
+        $delimiter = ",";
+        $enclosure = '"';
+        $escape = "\\";
+        $found = false;
+        
+        $csvPath = $this->yellow->system->get("MDFormDirectoryCSVOutput") . $fileName . ".csv"; 
+        
+        if (!file_exists($csvPath)) {
+            return "<p>" . $this->yellow->language->getText("MDFormErrorMdfFileNotFound") . "</p>\n";
+        }
+
+        $rows = [];
+        $headers = [];
+
+        // 1. Read the file into memory
+        if (($handle = fopen($csvPath, "r")) !== false) {
+            // Get the header row first
+            $headers = fgetcsv($handle, 0, $delimiter, $enclosure, $escape);
+            
+            if ($headers !== false) {
+                // Find the column indexes for hash and validation status
+                $hashIndex = array_search("mdform-hash", $headers);
+                $validatedIndex = array_search("mdform-validated", $headers);
+
+                if ($hashIndex !== false && $validatedIndex !== false) {
+                    // Read data rows
+                    while (($data = fgetcsv($handle, 0, $delimiter, $enclosure, $escape)) !== false) {
+                        // Check if this row matches the hash
+                        if ($data[$hashIndex] === $formHash) {
+                            $data[$validatedIndex] = "1"; // Change "0" to "1"
+                            $found = true;
+                        }
+                        $rows[] = $data;
+                    }
+                }
+            }
+            fclose($handle);
+        }
+
+        // 2. If a match was found, write the updated data back to the CSV
+        if ($found) {
+            $handle = fopen($csvPath, 'w'); // 'w' truncates the file to overwrite
+            if ($handle !== false) {
+                fputcsv($handle, $headers, $delimiter, $enclosure, $escape);
+                foreach ($rows as $row) {
+                    fputcsv($handle, $row, $delimiter, $enclosure, $escape);
+                }
+                fclose($handle);
+                $output = "<p>" . $this->yellow->language->getText("MDFormValidateSuccess") . "</p>\n";
+            } else {
+                $output = "<p>" . $this->yellow->language->getText("MDFormErrorCsvFileAccess") . "</p>\n";
+            }
+        } else {
+            // If hash is not found, it might be expired or already validated
+            $output = "<p>" . $this->yellow->language->getText("MDFormValidateError") . "</p>\n"; # . $this->getFormHTML($filePath, $fileName, $formOptions, true);
+        }
+
+        return $output;
+    }
+
     // Dispatch: Sends submitted data via email
     private function subDispatchEmail($formStructure) {
         $output = "";
         $message = "";
+        $sendCc = false;
+        $sendValidate = false;
         
         // Construct email body from submission
+        $maxKeyLength = max(array_map('mb_strlen', array_keys($formStructure)));
         foreach (array_keys($formStructure) as $header) {
             $val = $this->yellow->page->getRequest($header);
+            $displayKey = htmlspecialchars($header);
             $displayVal = is_array($val) ? implode(', ', $val) : $val;
-            $message .= htmlspecialchars($header) . $this->yellow->system->get("MDFormKeyValueSeperator") . htmlspecialchars(trim($displayVal)) . "\r\n";
+            $displayVal = ($formStructure[$header]['type'] === 'toggle' && empty($displayVal)) ? "OFF": $displayVal; // Toggle: Show OFF value if not ON value
+            $displayVal = htmlspecialchars(trim($displayVal));
+            $paddingCount = ($maxKeyLength - mb_strlen($displayKey));
+            $spaces = str_repeat(" ", $paddingCount);
+            $message  .= "{$displayKey}{$this->yellow->system->get("MDFormKeyValueSeperator")}{$spaces}{$displayVal}\r\n";
+            
+            if (isset($formStructure[$header]['special']) && $formStructure[$header]['special'] === '_cc_email' && $this->yellow->page->getRequest($header) === 'ON') {
+                $sendCc = true;
+            }
+            if (isset($formStructure[$header]['special']) && $formStructure[$header]['special'] === '_validate_email' && $this->yellow->page->getRequest($header) === 'ON') {
+                $sendValidate = true;
+            }
         }
         
         $referer = trim($this->yellow->page->getRequest("mdform-referer"));
@@ -905,7 +1064,12 @@ class YellowMdform {
      
         $headerText = str_replace("\\n", "\r\n", $headerText);
         $headerText = preg_replace("/@sendershort/i", strtok($senderName, " "), $headerText);
-        $headerText = preg_replace("/@sender/i", "$senderName <$senderEmail>", $headerText);
+        if (!empty($senderEmail)) {
+            $headerText = preg_replace("/@sender/i", "$senderName <$senderEmail>", $headerText);
+        } else {
+            $headerText = preg_replace("/@sender/i", $senderName, $headerText);
+        }
+
 
         $footerText = str_replace("\\n ", "\n", $footerText);
         $footerText = str_replace("\\n", "\r\n", $footerText);
@@ -927,32 +1091,84 @@ class YellowMdform {
             return $output;
         }
         
-        $referer = filter_var($referer, FILTER_SANITIZE_URL);
+        $mailTo = "$userName <$userEmail>";
+        $mailFrom = "$sitename <$siteEmail>";
+        $mailSubject = $this->sanitizeEmailSubject($subject);
+        $mailMessage = "$headerText\r\n\r\n$message\r\n--\r\n$footerText";
+        
+         // Reply-To if a email address is given
+        $mailReplyTo = (!empty($senderEmail) && (filter_var($senderEmail, FILTER_VALIDATE_EMAIL))) ? "$senderName <$senderEmail>" : "";
+  
+        // Send mail to page author
+        $output = $this->sendEmail($mailTo, $mailFrom, $mailSubject, $mailMessage, $mailReplyTo)
+            ? ("<p>" . $this->yellow->language->getText("MDFormEmailSent") . "</p>\n")
+            : "<p>". $this->yellow->language->getText("MDFormErrorEmailService") ."</p>";
+
+        // Send copy mail to from sender
+        if ($sendCc === true && (filter_var($senderEmail, FILTER_VALIDATE_EMAIL))) {
+            $mailTo = "$senderName <$senderEmail>";
+            $mailFrom = "$sitename <$siteEmail>";
+            $mailSubject = $this->sanitizeEmailSubject($subject);
+            $mailMessage = "$headerText\r\n\r\n$message\r\n--\r\n$footerText";
+            
+            $output .= $this->sendEmail($mailTo, $mailFrom, $mailSubject, $mailMessage)
+                ? ("<p>" . preg_replace("/@sendermail/i", $senderEmail, $this->yellow->language->getText("MDFormEmailCopySend")) . "</p>\n")
+                : "<p>". $this->yellow->language->getText("MDFormErrorEmailService") ."</p>";
+        }
+        
+        // Send validation mail to from sender
+        if ($sendValidate === true && (filter_var($senderEmail, FILTER_VALIDATE_EMAIL))) {
+            $mailTo = "$senderName <$senderEmail>";
+            $mailFrom = "$sitename <$siteEmail>";
+            $mailSubject = $this->sanitizeEmailSubject($subject);
+            $mailValidationFile = urlencode($this->yellow->page->getRequest("mdform-file"));
+            $mailValidationHash = urlencode($this->yellow->page->getRequest("mdform-hash"));
+            $mailValidationLink = filter_var($this->yellow->toolbox->getServer("HTTP_REFERER"), FILTER_SANITIZE_URL) . "?mdform-status=validate&mdform-file=$mailValidationFile&mdform-hash=$mailValidationHash";
+            $mailValidationText = $this->yellow->language->getText("MDFormMailValidateText");
+            $mailMessage = "$headerText\r\n\r\n$message\r\n--\r\n$mailValidationText\r\n$mailValidationLink\r\n--\r\n$footerText";
+            
+            $output .= $this->sendEmail($mailTo, $mailFrom, $mailSubject, $mailMessage)
+                ? ("<p>" . preg_replace("/@sendermail/i", $senderEmail, $this->yellow->language->getText("MDFormEmailValidateSend")) . "</p>\n")
+                : "<p>". $this->yellow->language->getText("MDFormErrorEmailService") ."</p>";
+        }
+        
+        return $output;
+    }
+    
+    
+    // Send Email
+    private function sendEmail($to, $from, $subject, $body, $replpyto = "", $cc = "", $bcc = "") {
+    
+        $referer = filter_var($this->yellow->toolbox->getServer("HTTP_REFERER"), FILTER_SANITIZE_URL);
         
         // Construct email header array
         $mailHeaders = array(
-            "To" => $this->yellow->lookup->normaliseAddress("$userName <$userEmail>"),
-            "From" => $this->yellow->lookup->normaliseAddress("$sitename <$siteEmail>"),
-            "Subject" => $this->sanitizeEmailSubject($subject),
+            "To" => $this->yellow->lookup->normaliseAddress($to),
+            "From" => $this->yellow->lookup->normaliseAddress($from),
+            "Subject" => $subject,
             "Date" => date(DATE_RFC2822),
             "Mime-Version" => "1.0",
             "Content-Type" => "text/plain; charset=utf-8",
             "X-Referer-Url" => $referer,
             "X-Request-Url" => $this->yellow->page->getUrl()
         );
-        // Conditionally add Reply-To header
-        if (!empty($senderEmail)) {
-            $mailHeaders["Reply-To"] = $this->yellow->lookup->normaliseAddress("$senderName <$senderEmail>");
+        // Conditionally add to header
+        if (!empty($cc)) {
+                $mailHeaders["Cc"] = $this->yellow->lookup->normaliseAddress($cc);
         }
-        $mailMessage = "$headerText\r\n\r\n$message\r\n--\r\n$footerText";
+        if (!empty($bcc)) {
+                $mailHeaders["Bcc"] = $this->yellow->lookup->normaliseAddress($bcc);
+        }
+        if (!empty($replpyto)) {
+                $mailHeaders["Reply-To"] = $this->yellow->lookup->normaliseAddress($replpyto);
+        }
+        $mailMessage = $body;
         
         // Execute system mail function
-        $output = $this->yellow->toolbox->mail("MDForm", $mailHeaders, $mailMessage) 
-            ? ("<p>" . $this->yellow->language->getText("MDFormEmailSent") . "</p>\n")
-            : "<p>". $this->yellow->language->getText("MDFormErrorEmailService") ."</p>";
-        
-        return $output;
+        return $this->yellow->toolbox->mail("MDForm", $mailHeaders, $mailMessage);
+
     }
+
 
     // Cleans email name fields to prevent injection
     private function sanitizeEmailName($name) {
@@ -1064,6 +1280,5 @@ class YellowMdform {
     public function checkCaptcha($string, $hash) {
         return $this->yellow->toolbox->verifyHash($string, "sha256", $hash);
     }
-
 
 }
